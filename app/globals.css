@@ -1,0 +1,168 @@
+@import "tailwindcss";
+
+/* ===== Loom skin (default — warm, playful) ===== */
+:root,
+[data-theme="loom"] {
+  --bg: #f1e7d6;
+  --bg2: #e9dcc6;
+  --surface: #fffdf7;
+  --card: #fffdf7;
+  --ink: #2c2521;
+  --muted: #9a8a78;
+  --line: #e0d2bd;
+  --track: #e6d8c2;
+  --accent: #e2624a;
+  --accent2: #2f9e8d;
+  --accent3: #caa23c;
+  --on-accent: #fffdf7;
+  --display: var(--font-bricolage), sans-serif;
+  --body: var(--font-hanken), sans-serif;
+  --mono: var(--font-space-mono), monospace;
+  --radius: 20px;
+  --radius-sm: 13px;
+  --hi-style: normal;
+  --hi-spacing: -0.02em;
+  --case: none;
+  --card-border: 1px solid #e0d2bd;
+  --chip-border: 1px solid #e0d2bd;
+  --card-shadow: 0 14px 30px -22px rgba(80, 50, 20, 0.4);
+  --logo-shadow: 0 4px 12px -4px rgba(226, 98, 74, 0.6);
+  --phone-shell: #2c2521;
+  --phone-notch: #0d0c0a;
+}
+
+/* ===== Arcade skin (retro broadcast / neon dark) ===== */
+[data-theme="arcade"] {
+  --bg: #0d0c12;
+  --bg2: #15131d;
+  --surface: #16141f;
+  --card: #1b1827;
+  --ink: #f6f2e9;
+  --muted: #8e889d;
+  --line: #2c2838;
+  --track: #262236;
+  --accent: #ffd23f;
+  --accent2: #ff5d9e;
+  --accent3: #3fe0d0;
+  --on-accent: #16141f;
+  --display: var(--font-space-grotesk), sans-serif;
+  --body: var(--font-space-grotesk), sans-serif;
+  --mono: var(--font-space-mono), monospace;
+  --radius: 9px;
+  --radius-sm: 7px;
+  --hi-style: normal;
+  --hi-spacing: 0.005em;
+  --case: uppercase;
+  --card-border: 1px solid #2c2838;
+  --chip-border: 1px solid #3a3550;
+  --card-shadow: 0 0 0 1px rgba(255, 210, 63, 0.05),
+    0 18px 50px -28px rgba(0, 0, 0, 0.9);
+  --logo-shadow: 0 0 18px rgba(255, 210, 63, 0.55);
+  --phone-shell: #000;
+  --phone-notch: #000;
+}
+
+/* ===== Press skin (editorial risograph / paper) ===== */
+[data-theme="press"] {
+  --bg: #eee7d6;
+  --bg2: #e5dcc6;
+  --surface: #faf6ec;
+  --card: #faf6ec;
+  --ink: #1b1a16;
+  --muted: #7a7160;
+  --line: #cabfa6;
+  --track: #ded3b8;
+  --accent: #2746e0;
+  --accent2: #ef4136;
+  --accent3: #2f8f5b;
+  --on-accent: #faf6ec;
+  --display: var(--font-newsreader), serif;
+  --body: var(--font-newsreader), serif;
+  --mono: var(--font-space-mono), monospace;
+  --radius: 2px;
+  --radius-sm: 2px;
+  --hi-style: italic;
+  --hi-spacing: -0.01em;
+  --case: none;
+  --card-border: 1.5px solid #1b1a16;
+  --chip-border: 1.5px solid #1b1a16;
+  --card-shadow: 5px 5px 0 rgba(39, 70, 224, 0.16);
+  --logo-shadow: 4px 4px 0 rgba(27, 26, 22, 0.85);
+  --phone-shell: #1b1a16;
+  --phone-notch: #1b1a16;
+}
+
+/* ===== Keyframes ===== */
+@keyframes loomPop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes loomRise {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes loomPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* ===== Tailwind theme inline ===== */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg2: var(--bg2);
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-track: var(--track);
+  --color-accent: var(--accent);
+  --color-accent2: var(--accent2);
+  --color-accent3: var(--accent3);
+  --color-on-accent: var(--on-accent);
+}
+
+/* ===== Base reset ===== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+input[type="range"] {
+  accent-color: var(--accent);
+}
