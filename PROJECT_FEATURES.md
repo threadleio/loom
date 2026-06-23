@@ -6,7 +6,7 @@ CrowdPulse is an internal live audience-engagement platform for company meetings
 
 The project is implemented as a Next.js 16 application with React 19, TypeScript, Prisma, SQLite, NextAuth, and Socket.IO. Business data is stored in SQLite through Prisma models, while live room updates are broadcast with Socket.IO through a custom Node server.
 
-The application implements most of the acceptance criteria from `../AcceptanceCritera.md`. The largest demo-oriented shortcuts are mocked SSO, local SQLite persistence, no event-close lifecycle before analytics, and a few UI gaps such as stored poll images not being rendered.
+The application implements all of the acceptance criteria from `../AcceptanceCritera.md`, plus a full event lifecycle (draft → live → ended → archived) layered on top. Realtime flows have been hardened (per-room socket filtering, server-anchored quiz timing with correct-answer reveal, live projector leaderboard). The remaining demo-oriented shortcuts are mocked SSO, local SQLite persistence, and a few UI gaps such as stored poll images not being rendered.
 
 ## Product Purpose
 
@@ -254,7 +254,7 @@ Scoring formula:
 score = 500 + (timeRemainingMs / totalMs) * 500
 ```
 
-Acceptance status: mostly implemented. Scoring and leaderboard are implemented. Participants only see score/rank after submitting; timer expiry alone does not automatically reveal the correct answer or assign a visible result.
+Acceptance status: implemented. Time-weighted scoring (anchored server-side to the poll's `activatedAt`, so a page refresh cannot reset the timer), the cumulative leaderboard, the projector countdown, and the live leaderboard refresh are all present. When the timer expires, participants who did not answer see a "Time's up" state with the correct answer revealed, and answerers see whether they were correct plus the correct option.
 
 ### 9. Multi-Room Support
 
@@ -321,6 +321,30 @@ Technical implementation:
 - `app/api/events/route.ts` requires a `host` role for event creation.
 
 Acceptance status: partial. The project has a stable mock SSO path suitable for hackathon purposes, but it does not implement real OAuth2, Azure AD, corporate redirects, domain allow-listing, or route-level enterprise access enforcement. Guest participants can join without SSO.
+
+### 12. Event Lifecycle
+
+Business value: events have a real lifecycle so one code maps to one meeting, stale events stop accepting joins, and analytics finalize when a session ends.
+
+User flow:
+
+1. A new event is created in `draft` — its access code is not yet joinable.
+2. The host clicks `Go Live`; the event moves to `live` and participants can join.
+3. The host runs polls, quizzes, and Q&A.
+4. The host clicks `End Event`; the event moves to `ended`, participants see a "session has ended" screen in real time, and further joins are rejected.
+5. The host can `Reopen` an ended event, or `Archive` it (and `Unarchive` later); drafts can be discarded (archived).
+
+Technical implementation:
+
+- `Event.status` stores `draft` | `live` | `ended` | `archived`; `Event.endedAt` records when it ended.
+- `app/api/events/[id]/route.ts` `PATCH` validates transitions (draft→live/archived, live→ended, ended→live/archived, archived→ended), requires event ownership, and sets/clears `endedAt`.
+- `app/api/events/join/route.ts` rejects joins unless the event is `live`, returning a status-aware message that the landing and join pages display.
+- The host panel's lifecycle bar shows the status and contextual actions; `setEventStatus` calls the API and broadcasts `event:status`.
+- `server.ts` relays `event:status` to the event room; participant and presenter views render status overlays and refresh when the event goes live.
+- `app/events/page.tsx` is a host dashboard listing events grouped by status.
+- The analytics page labels results as `LIVE · IN PROGRESS` versus `FINAL`.
+
+Acceptance status: implemented. Lifecycle transitions, join gating, realtime overlays, host controls, and the events dashboard are present. Poll editing is not hard-locked after an event ends (host-only surface), and transitions are explicit — the scheduled `startDate`/`endDate` do not auto-start or auto-end the event.
 
 ## Technical Architecture
 
@@ -399,6 +423,8 @@ Key fields:
 - `accessCode`
 - `passcode`
 - `moderationEnabled`
+- `status` (`draft` | `live` | `ended` | `archived`)
+- `endedAt`
 - `createdBy`
 
 ### Room
@@ -444,6 +470,7 @@ Key fields:
 - `status`
 - `correctAnswer`
 - `timerSeconds`
+- `activatedAt` (set when a poll is launched; anchors the quiz timer and server-side scoring)
 
 ### PollOption
 
@@ -457,7 +484,7 @@ Key fields:
 
 ### PollResponse
 
-Represents one participant response to a poll. For quizzes, it also stores the awarded score. The unique `(pollId, userId)` constraint enforces one response per user per poll.
+Represents one participant response to a poll. For quizzes, it also stores the awarded score. One response per user is enforced in the API for multiple-choice and quiz polls; word-cloud polls allow multiple submissions per user (so the cloud can grow), so the table uses a non-unique `(pollId, userId)` index rather than a unique constraint.
 
 Key fields:
 
@@ -478,8 +505,8 @@ Key fields:
 ### Events
 
 - `app/api/events/route.ts`: creates and lists events for the current host.
-- `app/api/events/join/route.ts`: validates access code and optional passcode.
-- `app/api/events/[id]/route.ts`: returns event details, rooms, and host display name.
+- `app/api/events/join/route.ts`: validates access code and optional passcode, and rejects joins unless the event is `live`.
+- `app/api/events/[id]/route.ts`: `GET` returns event details, rooms, and host display name; `PATCH` changes the event lifecycle status (owner only).
 
 ### Rooms
 
@@ -519,9 +546,10 @@ Socket clients join event-scoped rooms using `join-event`. The server maps that 
 | `poll:activated` | `poll:activated` | Notifies clients that a poll became active. |
 | `poll:response` | `poll:response` | Notifies clients that poll results changed. |
 | `poll:closed` | `poll:closed` | Notifies clients that a poll closed. |
-| `poll:leaderboard` | `poll:leaderboard` | Pushes leaderboard data to presenter view. |
+| `poll:leaderboard` | `poll:leaderboard` | Pushes leaderboard data (with `pollId`) to the presenter view for the live refresh. |
+| `event:status` | `event:status` | Broadcasts an event lifecycle change (e.g. live → ended) to every surface. |
 
-Most payloads include `eventId`, and many include `roomId`. The socket room itself is event-scoped, while API calls and UI state are room-scoped.
+Most payloads include `eventId` and `roomId`. The socket room itself is event-scoped, so the participant and presenter views filter incoming events by `roomId` (against the room they are currently viewing) to avoid cross-room updates in multi-room events.
 
 ## Security And Authorization
 
@@ -552,28 +580,29 @@ Important gaps:
 
 - SSO is intentionally mocked with an email-based provider.
 - The app uses local SQLite, which is appropriate for a hackathon demo but not for multi-instance production deployment.
-- There is no event lifecycle state such as draft, live, closed, or archived.
-- Analytics are always accessible by route rather than only after closing an event.
 - Poll image URLs are stored but not rendered in participant or presenter views.
-- Participant view does not show live partial results after non-quiz poll submission.
-- Quiz timer expiry disables submission but does not automatically reveal the correct answer to users who did not answer.
+- Participant view does not show live partial results after non-quiz poll submission (results are shown on the presenter view, Slido-style).
+- Presenter focus mode triggers on the live "highlight" event; opening the presenter view after a question is already highlighted won't focus it until it is re-highlighted.
+- Poll editing is not hard-locked after an event ends.
+- Lifecycle transitions are explicit host actions; the scheduled `startDate`/`endDate` do not auto-start or auto-end the event.
 - Presenter view is clean but not completely chrome-free because it keeps a header and room switcher.
 - Access codes are six-character codes without a `#` prefix or event-name branding.
 - The moderation setting is only configured during event creation.
 - The original Loom spec included a live pulse interaction, but this is not implemented in the acceptance-criteria MVP.
+- The quiz correct answer is included in the active-poll payload (needed for the on-device reveal), so it is technically visible in network traffic before answering.
 
 ## Suggested Next Improvements
 
 1. Replace mock SSO with real Azure AD or OAuth2 and enforce a company domain allow-list.
 2. Add middleware or server-side checks for host, analytics, and presenter routes.
 3. Tighten ownership checks for rooms, polls, poll status changes, and correct-answer updates.
-4. Add an event lifecycle so analytics become available after an event is closed.
-5. Render poll images in participant and presenter views.
-6. Improve quiz timeout behavior so unanswered participants see the correct answer and a zero-score result.
-7. Add a durable room-level theme setting so hosts can choose a visual skin per event or room.
-8. Add production-ready persistence such as Postgres and adjust Socket.IO scaling for multi-instance deployments.
-9. Add tests for authorization, one-vote constraints, one-response constraints, poll activation, and quiz scoring.
-10. Add CSV export coverage for individual poll responses and quiz scores if deeper post-event analysis is required.
+4. Render poll images in participant and presenter views.
+5. Add a durable room-level theme setting so hosts can choose a visual skin per event or room.
+6. Add production-ready persistence such as Postgres and adjust Socket.IO scaling for multi-instance deployments.
+7. Add tests for authorization, one-vote/one-response constraints, poll activation, quiz scoring, and lifecycle transitions.
+8. Add CSV export coverage for individual poll responses and quiz scores if deeper post-event analysis is required.
+9. Auto-start/auto-end events from the scheduled `startDate`/`endDate`, and hard-lock poll editing once an event has ended.
+10. Hide the quiz correct answer from the active-poll payload until the poll is closed (serve it via a dedicated reveal step).
 
 ## Quick Reference
 
