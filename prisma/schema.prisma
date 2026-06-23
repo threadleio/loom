@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id          String     @id @default(cuid())
+  displayName String
+  email       String?    @unique
+  password    String?
+  role        String     @default("participant") // "host" | "participant"
+  isGuest     Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+
+  events       Event[]
+  questions    Question[]
+  votes        Vote[]
+  pollResponses PollResponse[]
+}
+
+model Event {
+  id                String   @id @default(cuid())
+  name              String
+  startDate         DateTime
+  endDate           DateTime
+  accessCode        String   @unique
+  passcode          String?
+  moderationEnabled Boolean  @default(false)
+  status            String   @default("draft") // "draft" | "live" | "ended" | "archived"
+  endedAt           DateTime?
+  createdBy         String
+  createdAt         DateTime @default(now())
+
+  host  User   @relation(fields: [createdBy], references: [id])
+  rooms Room[]
+}
+
+model Room {
+  id      String @id @default(cuid())
+  eventId String
+  name    String @default("Main")
+
+  event     Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  questions Question[]
+  polls     Poll[]
+
+  @@unique([eventId, name])
+}
+
+model Poll {
+  id          String   @id @default(cuid())
+  roomId      String
+  title       String
+  type        String   @default("multiple_choice") // "multiple_choice" | "word_cloud" | "quiz"
+  imageUrl    String?
+  status      String   @default("draft") // "draft" | "active" | "closed"
+  correctAnswer String?
+  timerSeconds Int      @default(30)
+  activatedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  room      Room           @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  options   PollOption[]
+  responses PollResponse[]
+}
+
+model PollOption {
+  id     String @id @default(cuid())
+  pollId String
+  text   String
+  order  Int    @default(0)
+
+  poll      Poll           @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  responses PollResponse[]
+}
+
+model PollResponse {
+  id        String   @id @default(cuid())
+  pollId    String
+  optionId  String?
+  userId    String
+  textValue String?
+  answeredAt DateTime @default(now())
+  score     Int      @default(0)
+
+  poll   Poll        @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option PollOption? @relation(fields: [optionId], references: [id])
+  user   User        @relation(fields: [userId], references: [id])
+
+  @@index([pollId, userId])
+}
+
+model Question {
+  id          String   @id @default(cuid())
+  roomId      String
+  authorId    String
+  content     String
+  isAnonymous Boolean  @default(false)
+  status      String   @default("approved") // "pending" | "approved" | "highlighted" | "archived" | "rejected"
+  createdAt   DateTime @default(now())
+
+  room   Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id])
+  votes  Vote[]
+}
+
+model Vote {
+  id         String   @id @default(cuid())
+  questionId String
+  userId     String
+  createdAt  DateTime @default(now())
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@unique([questionId, userId])
+}
