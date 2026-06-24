@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { getSocket } from "@/lib/socket";
 
@@ -283,6 +284,14 @@ export default function PresentViewPage() {
             {ended ? "This session has ended." : "Join with the code above to take part."}
           </p>
         </div>
+        {controlMode && (
+          <div className="flex gap-3" style={{ marginTop: 40 }}>
+            <Link href={`/event/${id}/host`} className="transition-opacity hover:opacity-90" style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 15, padding: "12px 22px", borderRadius: "var(--radius-sm)", background: "var(--accent)", color: "var(--on-accent)", textDecoration: "none" }}>← Back to host</Link>
+            {ended && (
+              <Link href={`/event/${id}/analytics`} className="transition-opacity hover:opacity-90" style={{ fontFamily: "var(--display)", fontWeight: 700, fontSize: 15, padding: "12px 22px", borderRadius: "var(--radius-sm)", background: "var(--bg2)", border: "var(--card-border)", color: "var(--ink)", textDecoration: "none" }}>View results →</Link>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -296,7 +305,12 @@ export default function PresentViewPage() {
     >
       {/* Slim, near-chrome-free top strip */}
       <header className="flex-none flex items-center justify-between" style={{ padding: "12px 36px" }}>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--muted)", letterSpacing: ".06em", textTransform: "uppercase" }}>{event.name}</div>
+        <div className="flex items-center gap-4">
+          {controlMode && (
+            <Link href={`/event/${id}/host`} className="transition-opacity hover:opacity-100" style={{ fontFamily: "var(--mono)", fontSize: 11, fontWeight: 700, color: "var(--ink)", letterSpacing: ".04em", textDecoration: "none", padding: "5px 12px", borderRadius: 999, border: "var(--card-border)", background: "var(--bg2)", opacity: 0.8 }}>← Host</Link>
+          )}
+          <div style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--muted)", letterSpacing: ".06em", textTransform: "uppercase" }}>{event.name}</div>
+        </div>
         <div className="flex items-baseline gap-2">
           <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--muted)", letterSpacing: ".06em" }}>JOIN CODE</span>
           <span style={{ fontFamily: "var(--mono)", fontSize: 20, fontWeight: 700, color: "var(--accent2)", letterSpacing: ".16em" }}>{event.accessCode}</span>
