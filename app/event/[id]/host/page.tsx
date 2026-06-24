@@ -12,6 +12,7 @@ interface EventData {
   id: string;
   name: string;
   accessCode: string;
+  passcode?: string | null;
   moderationEnabled: boolean;
   createdAt: string;
   status: string;
@@ -88,6 +89,9 @@ export default function HostPanel() {
   const { id } = useParams<{ id: string }>();
   const { data: session } = useSession();
   const [event, setEvent] = useState<EventData | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [passcodeDraft, setPasscodeDraft] = useState("");
   const [copied, setCopied] = useState(false);
   const [tab, setTab] = useState<Tab>("live");
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -127,6 +131,7 @@ export default function HostPanel() {
       .then((res) => res.json())
       .then((data: EventData) => {
         setEvent(data);
+        setPasscodeDraft(data.passcode || "");
         if (!activeRoomId && data.rooms?.length) {
           setActiveRoomId(data.rooms[0].id);
         }
@@ -273,6 +278,30 @@ export default function HostPanel() {
     }
   }
 
+  async function patchEvent(data: Record<string, unknown>) {
+    const res = await fetch(`/api/events/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setEvent((prev) => (prev ? { ...prev, ...updated } : prev));
+    }
+  }
+
+  async function saveName() {
+    setEditingName(false);
+    const trimmed = nameDraft.trim();
+    if (!trimmed || trimmed === event?.name) return;
+    await patchEvent({ name: trimmed });
+  }
+
+  async function savePasscode() {
+    if ((passcodeDraft.trim() || null) === (event?.passcode || null)) return;
+    await patchEvent({ passcode: passcodeDraft.trim() });
+  }
+
   if (!event) {
     return (
       <div className="flex min-h-screen items-center justify-center" style={{ background: "var(--bg)" }}>
@@ -303,9 +332,26 @@ export default function HostPanel() {
           {/* Title + nav buttons */}
           <div className="mb-8 flex items-center justify-between">
             <div>
-              <h1 style={{ fontFamily: "var(--display)", fontWeight: 800, fontStyle: "var(--hi-style)", fontSize: 28, letterSpacing: "var(--hi-spacing)", textTransform: "var(--case)" as React.CSSProperties["textTransform"], color: "var(--ink)", margin: 0 }}>
-                {event.name}
-              </h1>
+              {editingName ? (
+                <input
+                  autoFocus
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  onBlur={saveName}
+                  onKeyDown={(e) => { if (e.key === "Enter") saveName(); if (e.key === "Escape") setEditingName(false); }}
+                  placeholder="Live session"
+                  style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 28, letterSpacing: "var(--hi-spacing)", textTransform: "var(--case)" as React.CSSProperties["textTransform"], color: "var(--ink)", margin: 0, background: "var(--bg)", border: "1.5px solid var(--accent)", borderRadius: "var(--radius-sm)", padding: "2px 10px", outline: "none", maxWidth: 420 }}
+                />
+              ) : (
+                <h1
+                  onClick={() => { setNameDraft(event.name); setEditingName(true); }}
+                  title="Click to rename"
+                  style={{ fontFamily: "var(--display)", fontWeight: 800, fontStyle: "var(--hi-style)", fontSize: 28, letterSpacing: "var(--hi-spacing)", textTransform: "var(--case)" as React.CSSProperties["textTransform"], color: "var(--ink)", margin: 0, cursor: "text", display: "inline-flex", alignItems: "center", gap: 9 }}
+                >
+                  {event.name}
+                  <span style={{ fontSize: 14, color: "var(--muted)", fontWeight: 600 }}>✎</span>
+                </h1>
+              )}
               <p style={{ fontFamily: "var(--mono)", fontSize: "11px", color: "var(--muted)", letterSpacing: ".06em", marginTop: 4 }}>HOST PANEL</p>
             </div>
             <div className="flex gap-2">
@@ -360,17 +406,25 @@ export default function HostPanel() {
             </div>
 
             <div style={{ padding: 22, background: "var(--card)", border: "var(--card-border)", borderRadius: "var(--radius)", boxShadow: "var(--card-shadow)" }}>
-              <h2 style={{ ...labelStyle, marginBottom: 16 }}>Event Details</h2>
-              <dl className="space-y-3">
-                <div className="flex justify-between">
-                  <dt style={{ fontFamily: "var(--mono)", fontSize: "10.5px", color: "var(--muted)", letterSpacing: ".04em" }}>Created</dt>
-                  <dd style={{ fontFamily: "var(--body)", fontWeight: 600, fontSize: 14, color: "var(--ink)", margin: 0 }}>{new Date(event.createdAt).toLocaleString()}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt style={{ fontFamily: "var(--mono)", fontSize: "10.5px", color: "var(--muted)", letterSpacing: ".04em" }}>Moderation</dt>
-                  <dd style={{ fontFamily: "var(--body)", fontWeight: 600, fontSize: 14, color: event.moderationEnabled ? "var(--accent3)" : "var(--accent2)", margin: 0 }}>
-                    {event.moderationEnabled ? "Enabled" : "Disabled"}
+              <h2 style={{ ...labelStyle, marginBottom: 16 }}>Settings</h2>
+              <dl className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <dt style={{ fontFamily: "var(--mono)", fontSize: "10.5px", color: "var(--muted)", letterSpacing: ".04em" }}>Question moderation</dt>
+                  <dd style={{ margin: 0 }}>
+                    <button onClick={() => patchEvent({ moderationEnabled: !event.moderationEnabled })} className="cursor-pointer transition-colors" style={{ fontFamily: "var(--mono)", fontSize: 11, fontWeight: 700, letterSpacing: ".04em", padding: "5px 14px", borderRadius: 999, border: "var(--card-border)", background: event.moderationEnabled ? "var(--accent3)" : "var(--bg2)", color: event.moderationEnabled ? "var(--on-accent)" : "var(--muted)" }}>
+                      {event.moderationEnabled ? "ON" : "OFF"}
+                    </button>
                   </dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt style={{ fontFamily: "var(--mono)", fontSize: "10.5px", color: "var(--muted)", letterSpacing: ".04em", flexShrink: 0 }}>Passcode</dt>
+                  <dd style={{ margin: 0, flex: 1, maxWidth: 170 }}>
+                    <input value={passcodeDraft} onChange={(e) => setPasscodeDraft(e.target.value)} onBlur={savePasscode} onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} placeholder="None" style={{ fontFamily: "var(--body)", fontSize: 13, padding: "6px 10px", width: "100%", textAlign: "right", border: "var(--card-border)", borderRadius: "var(--radius-sm)", background: "var(--bg)", color: "var(--ink)", outline: "none" }} />
+                  </dd>
+                </div>
+                <div className="flex justify-between" style={{ borderTop: "1px solid var(--line)", paddingTop: 12 }}>
+                  <dt style={{ fontFamily: "var(--mono)", fontSize: "10.5px", color: "var(--muted)", letterSpacing: ".04em" }}>Created</dt>
+                  <dd style={{ fontFamily: "var(--body)", fontWeight: 600, fontSize: 13, color: "var(--muted)", margin: 0 }}>{new Date(event.createdAt).toLocaleString()}</dd>
                 </div>
               </dl>
             </div>

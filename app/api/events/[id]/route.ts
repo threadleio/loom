@@ -46,23 +46,62 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { status } = await request.json();
-  const allowed = EVENT_TRANSITIONS[event.status] || [];
-  if (!status || !allowed.includes(status)) {
-    return NextResponse.json(
-      { error: `Cannot move event from "${event.status}" to "${status}"` },
-      { status: 400 }
-    );
+  const body = await request.json();
+  const { status, name, passcode, moderationEnabled } = body;
+  const data: Record<string, unknown> = {};
+
+  // Status changes still go through the lifecycle state machine.
+  if (status !== undefined) {
+    const allowed = EVENT_TRANSITIONS[event.status] || [];
+    if (!allowed.includes(status)) {
+      return NextResponse.json(
+        { error: `Cannot move event from "${event.status}" to "${status}"` },
+        { status: 400 }
+      );
+    }
+    data.status = status;
+    data.endedAt =
+      status === "ended" ? new Date() : status === "live" ? null : event.endedAt;
   }
 
-  const updated = await prisma.event.update({
-    where: { id },
-    data: {
-      status,
-      endedAt:
-        status === "ended" ? new Date() : status === "live" ? null : event.endedAt,
-    },
-  });
+  // Inline-editable settings (rename, passcode, moderation).
+  if (name !== undefined) {
+    data.name = (typeof name === "string" && name.trim()) || "Live session";
+  }
+  if (passcode !== undefined) {
+    data.passcode = (typeof passcode === "string" && passcode.trim()) || null;
+  }
+  if (moderationEnabled !== undefined) {
+    data.moderationEnabled = !!moderationEnabled;
+  }
 
+  if (Object.keys(data).length === 0) {
+    return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+  }
+
+  const updated = await prisma.event.update({ where: { id }, data });
   return NextResponse.json(updated);
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const event = await prisma.event.findUnique({ where: { id } });
+  if (!event) {
+    return NextResponse.json({ error: "Event not found" }, { status: 404 });
+  }
+  if (event.createdBy !== session.user.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Rooms → polls/questions → options/responses/votes all cascade from here.
+  await prisma.event.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
 }
