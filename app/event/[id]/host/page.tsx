@@ -93,7 +93,7 @@ export default function HostPanel() {
   const [nameDraft, setNameDraft] = useState("");
   const [passcodeDraft, setPasscodeDraft] = useState("");
   const [copied, setCopied] = useState(false);
-  const [tab, setTab] = useState<Tab>("live");
+  const [tab, setTab] = useState<Tab>("polls");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [pendingQuestions, setPendingQuestions] = useState<Question[]>([]);
   const [polls, setPolls] = useState<PollData[]>([]);
@@ -264,6 +264,7 @@ export default function HostPanel() {
   }
 
   async function setEventStatus(newStatus: string) {
+    if (newStatus === "live" && polls.length === 0 && !window.confirm("This event has no polls yet. Go live anyway? You can still add them once you're live.")) return;
     if (newStatus === "ended" && !window.confirm("End the event for everyone? Participants will no longer be able to join or respond.")) return;
     if (newStatus === "archived" && !window.confirm("Archive this event?")) return;
     const res = await fetch(`/api/events/${id}`, {
@@ -316,8 +317,12 @@ export default function HostPanel() {
   const archivedQuestions = questions.filter((q) => q.status === "archived");
   const liveQuestions = questions.filter((q) => q.status !== "archived");
 
+  const hasPolls = polls.length > 0;
+  // A brand-new draft with nothing built yet: lead the host to add content,
+  // and dim the actions (stage/projector/analytics, go live) that go nowhere.
+  const isFirstRun = event.status === "draft" && !hasPolls;
   const tabItems: { key: Tab; label: string; count: number }[] = [
-    { key: "live", label: "Live", count: liveQuestions.length },
+    { key: "live", label: "Questions", count: liveQuestions.length },
     ...(event.moderationEnabled ? [{ key: "pending" as const, label: "Review", count: pendingQuestions.length }] : []),
     { key: "archived", label: "Archived", count: archivedQuestions.length },
     { key: "polls", label: "Polls", count: polls.length },
@@ -354,7 +359,7 @@ export default function HostPanel() {
               )}
               <p style={{ fontFamily: "var(--mono)", fontSize: "11px", color: "var(--muted)", letterSpacing: ".06em", marginTop: 4 }}>HOST PANEL</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 transition-opacity" style={{ opacity: isFirstRun ? 0.45 : 1 }} title={isFirstRun ? "Add a poll first — there's nothing to present yet" : undefined}>
               <Link href={`/event/${id}/present?control=1`} className="transition-opacity hover:opacity-80" style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 13, padding: "9px 16px", borderRadius: "var(--radius-sm)", background: "var(--accent)", color: "var(--on-accent)", textDecoration: "none" }}>▶ Open Stage</Link>
               <Link href={`/event/${id}/present`} className="transition-opacity hover:opacity-80" style={{ fontFamily: "var(--body)", fontWeight: 700, fontSize: 13, padding: "9px 16px", borderRadius: "var(--radius-sm)", background: "var(--ink)", color: "var(--surface)", textDecoration: "none" }}>Projector</Link>
               <Link href={`/event/${id}/analytics`} className="transition-opacity hover:opacity-80" style={{ fontFamily: "var(--body)", fontWeight: 600, fontSize: 13, padding: "9px 16px", borderRadius: "var(--radius-sm)", background: "var(--accent3)", color: "var(--on-accent)", textDecoration: "none" }}>Analytics</Link>
@@ -373,7 +378,7 @@ export default function HostPanel() {
             <div className="flex gap-2 flex-none">
               {event.status === "draft" && (
                 <>
-                  <button onClick={() => setEventStatus("live")} style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 13, padding: "9px 18px", border: "none", borderRadius: "var(--radius-sm)", background: "var(--accent2)", color: "var(--on-accent)", cursor: "pointer" }}>▶ Go Live</button>
+                  <button onClick={() => setEventStatus("live")} style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 13, padding: "9px 18px", borderRadius: "var(--radius-sm)", border: isFirstRun ? "var(--card-border)" : "none", background: isFirstRun ? "var(--bg2)" : "var(--accent2)", color: isFirstRun ? "var(--muted)" : "var(--on-accent)", cursor: "pointer" }}>▶ Go Live</button>
                   <button onClick={() => setEventStatus("archived")} style={{ ...btnStyle("var(--bg2)", "var(--muted)"), border: "var(--card-border)" }}>Discard</button>
                 </>
               )}
@@ -392,11 +397,25 @@ export default function HostPanel() {
             </div>
           </div>
 
+          {/* First-run: lead with the one thing that matters — building content */}
+          {isFirstRun && (
+            <div className="mb-6 flex flex-col items-center text-center" style={{ padding: "30px 22px", background: "var(--card)", border: "1.5px dashed var(--accent)", borderRadius: "var(--radius)", boxShadow: "var(--card-shadow)" }}>
+              <p style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 21, color: "var(--ink)", margin: 0 }}>Let&rsquo;s build your event</p>
+              <p style={{ fontFamily: "var(--body)", fontSize: 14, color: "var(--muted)", margin: "8px 0 18px", maxWidth: 440 }}>Add a poll, quiz, or word cloud — then go live and put it up on the big screen.</p>
+              <button onClick={() => { setTab("polls"); setShowPollForm(true); }} className="cursor-pointer transition-opacity hover:opacity-90" style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 16, padding: "14px 28px", border: "none", borderRadius: "var(--radius-sm)", background: "var(--accent)", color: "var(--on-accent)" }}>
+                ＋ Add your first poll
+              </button>
+            </div>
+          )}
+
           {/* Info cards */}
           <div className="grid gap-6 md:grid-cols-2 mb-8">
             <div style={{ padding: 22, background: "var(--card)", border: "var(--card-border)", borderRadius: "var(--radius)", boxShadow: "var(--card-shadow)" }}>
               <h2 style={{ ...labelStyle, marginBottom: 16 }}>Access Code</h2>
               <div style={{ fontFamily: "var(--mono)", fontWeight: 700, fontSize: 28, letterSpacing: ".18em", color: "var(--accent2)" }}>{event.accessCode}</div>
+              {event.status === "draft" && (
+                <p style={{ fontFamily: "var(--body)", fontSize: 12, color: "var(--muted)", marginTop: 6 }}>Participants can join once you go live.</p>
+              )}
               <div className="mt-4 flex gap-2">
                 <button onClick={copyLink} className="cursor-pointer transition-opacity hover:opacity-90" style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 13, padding: "9px 16px", border: "none", borderRadius: "var(--radius-sm)", background: "var(--accent)", color: "var(--on-accent)" }}>
                   {copied ? "Copied!" : "Copy Share Link"}
@@ -462,7 +481,7 @@ export default function HostPanel() {
               {/* LIVE QUESTIONS */}
               {tab === "live" && (
                 <div className="space-y-3">
-                  {liveQuestions.length === 0 ? <p className="text-center py-8" style={{ fontFamily: "var(--body)", color: "var(--muted)" }}>No live questions yet</p> : liveQuestions.map((q) => (
+                  {liveQuestions.length === 0 ? <p className="text-center py-8" style={{ fontFamily: "var(--body)", color: "var(--muted)" }}>Audience questions will appear here once you&rsquo;re live.</p> : liveQuestions.map((q) => (
                     <div key={q.id} className="flex items-start gap-4" style={{ padding: "14px 16px", borderRadius: "var(--radius-sm)", border: q.status === "highlighted" ? "2px solid var(--accent)" : "var(--card-border)", background: q.status === "highlighted" ? "var(--bg2)" : "var(--surface)" }}>
                       <div className="text-center" style={{ minWidth: 48 }}>
                         <span style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 20, color: "var(--accent2)" }}>{q.voteCount}</span>
@@ -584,7 +603,12 @@ export default function HostPanel() {
 
                   <div className="space-y-3">
                     {polls.length === 0 && !showPollForm ? (
-                      <p className="text-center py-8" style={{ fontFamily: "var(--body)", color: "var(--muted)" }}>No polls created yet</p>
+                      <div className="text-center" style={{ padding: "28px 0" }}>
+                        <p style={{ fontFamily: "var(--body)", fontSize: 14, color: "var(--muted)", marginBottom: 14 }}>Polls, quizzes, and word clouds are the heart of your event.</p>
+                        <button onClick={() => setShowPollForm(true)} className="cursor-pointer transition-opacity hover:opacity-90" style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 15, padding: "12px 24px", border: "none", borderRadius: "var(--radius-sm)", background: "var(--accent)", color: "var(--on-accent)" }}>
+                          ＋ Create your first poll
+                        </button>
+                      </div>
                     ) : (
                       polls.map((p) => (
                         <div key={p.id} className="flex items-center gap-4" style={{ padding: "14px 16px", borderRadius: "var(--radius-sm)", border: p.status === "active" ? "2px solid var(--accent)" : "var(--card-border)", background: p.status === "active" ? "var(--bg2)" : "var(--surface)" }}>
