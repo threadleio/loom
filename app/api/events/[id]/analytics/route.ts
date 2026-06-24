@@ -52,6 +52,18 @@ export async function GET(
   questions.forEach((q) => uniqueParticipantIds.add(q.authorId));
   polls.forEach((p) => p.responses.forEach((r) => uniqueParticipantIds.add(r.userId)));
 
+  // Quiz leaderboard: total score per participant across all quiz polls.
+  const quizScores = new Map<string, { name: string; score: number }>();
+  for (const p of polls) {
+    if (p.type !== "quiz") continue;
+    for (const r of p.responses) {
+      const current = quizScores.get(r.userId) ?? { name: r.user.displayName, score: 0 };
+      current.score += r.score;
+      quizScores.set(r.userId, current);
+    }
+  }
+  const leaderboard = [...quizScores.values()].sort((a, b) => b.score - a.score);
+
   const totalParticipants = uniqueParticipantIds.size;
   const engagementRate =
     totalParticipants > 0
@@ -69,6 +81,7 @@ export async function GET(
     totalVotes,
     totalPollResponses,
     engagementRate: Math.min(engagementRate, 100),
+    leaderboard,
     questions: questions.map((q) => ({
       content: q.content,
       author: q.isAnonymous ? "Anonymous" : q.author.displayName,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { getSocket } from "@/lib/socket";
@@ -100,6 +100,7 @@ export default function HostPanel() {
   const [pollTitle, setPollTitle] = useState("");
   const [pollType, setPollType] = useState("multiple_choice");
   const [pollOptions, setPollOptions] = useState(["", ""]);
+  const optionRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [pollTimer, setPollTimer] = useState(30);
   const [pollCorrectIdx, setPollCorrectIdx] = useState(0);
   const [pollImageUrl, setPollImageUrl] = useState("");
@@ -216,6 +217,22 @@ export default function HostPanel() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ correctAnswer: optionId }),
     });
+  }
+
+  // Enter flows to the next option (adding one if needed) instead of
+  // submitting the form; Backspace on an empty field removes it.
+  function handleOptionKey(e: React.KeyboardEvent<HTMLInputElement>, i: number) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (i === pollOptions.length - 1 && pollOptions[i].trim()) {
+        setPollOptions([...pollOptions, ""]);
+      }
+      requestAnimationFrame(() => optionRefs.current[i + 1]?.focus());
+    } else if (e.key === "Backspace" && !pollOptions[i] && pollOptions.length > 2) {
+      e.preventDefault();
+      setPollOptions(pollOptions.filter((_, idx) => idx !== i));
+      requestAnimationFrame(() => optionRefs.current[Math.max(0, i - 1)]?.focus());
+    }
   }
 
   async function setPollStatus(pollId: string, status: string) {
@@ -490,7 +507,7 @@ export default function HostPanel() {
                             <div className="space-y-2">
                               {pollOptions.map((opt, i) => (
                                 <div key={i} className="flex gap-2 items-center">
-                                  <input value={opt} onChange={(e) => { const next = [...pollOptions]; next[i] = e.target.value; setPollOptions(next); }} placeholder={`Option ${i + 1}`} style={inputStyle} />
+                                  <input ref={(el) => { optionRefs.current[i] = el; }} value={opt} onChange={(e) => { const next = [...pollOptions]; next[i] = e.target.value; setPollOptions(next); }} onKeyDown={(e) => handleOptionKey(e, i)} placeholder={i < 2 ? `Option ${i + 1}` : "Option (Enter for next)"} style={inputStyle} />
                                   {pollType === "quiz" && (
                                     <button type="button" onClick={() => setPollCorrectIdx(i)} className="cursor-pointer flex-none" style={{ fontFamily: "var(--mono)", fontSize: 10, padding: "6px 8px", borderRadius: "var(--radius-sm)", background: pollCorrectIdx === i ? "var(--accent2)" : "var(--bg)", border: "var(--card-border)", color: pollCorrectIdx === i ? "var(--on-accent)" : "var(--muted)" }}>
                                       {pollCorrectIdx === i ? "CORRECT" : "Mark"}

@@ -13,6 +13,7 @@ interface Analytics {
   totalVotes: number;
   totalPollResponses: number;
   engagementRate: number;
+  leaderboard: { name: string; score: number }[];
   questions: {
     content: string;
     author: string;
@@ -67,6 +68,9 @@ export default function AnalyticsPage() {
     if (!data) return;
 
     let csv = "Type,Content,Author,Votes/Responses,Status,Created At\n";
+    data.leaderboard.forEach((l, i) => {
+      csv += `Leaderboard,"${l.name.replace(/"/g, '""')}",,${l.score},#${i + 1},\n`;
+    });
     for (const q of data.questions) {
       csv += `Question,"${q.content.replace(/"/g, '""')}","${q.author}",${q.votes},${q.status},${q.createdAt}\n`;
     }
