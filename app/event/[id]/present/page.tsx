@@ -2,10 +2,8 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { getSocket } from "@/lib/socket";
-import { SkinOverlay } from "@/components/skin-overlay";
-import { useTheme } from "@/components/theme-provider";
-import { RoomSwitcher } from "@/components/room-switcher";
 
 interface Question {
   id: string;
@@ -31,15 +29,18 @@ interface EventData {
   name: string;
   accessCode: string;
   status: string;
+  createdBy: string;
   rooms: { id: string; name: string }[];
 }
 
 export default function PresentViewPage() {
   const { id } = useParams<{ id: string }>();
-  const { theme } = useTheme();
+  const { data: session } = useSession();
   const [event, setEvent] = useState<EventData | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [polls, setPolls] = useState<{ id: string; title: string; type: string; status: string }[]>([]);
   const [activePoll, setActivePoll] = useState<PollData | null>(null);
+  const [controlParam, setControlParam] = useState(false);
   const [focusedQuestion, setFocusedQuestion] = useState<Question | null>(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboard, setLeaderboard] = useState<{ name: string; score: number }[]>([]);
@@ -74,6 +75,55 @@ export default function PresentViewPage() {
     if (res.ok) setLeaderboard(await res.json());
   }, [id, roomQuery]);
 
+  const fetchPolls = useCallback(async () => {
+    const res = await fetch(`/api/events/${id}/polls${roomQuery}`);
+    if (res.ok) setPolls(await res.json());
+  }, [id, roomQuery]);
+
+  // The host drives the stage when ?control=1 and they own the event.
+  const controlMode = controlParam && !!event && session?.user?.id === event.createdBy;
+
+  // Deck position: 0 = Q&A (no active poll), 1..N = polls[0..N-1].
+  const deckPos = activePoll ? polls.findIndex((p) => p.id === activePoll.id) + 1 : 0;
+  const hasQuiz = polls.some((p) => p.type === "quiz");
+
+  async function activatePoll(pollId: string) {
+    const res = await fetch(`/api/events/${id}/polls/${pollId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "active" }) });
+    if (res.ok) getSocket().emit("poll:activated", { eventId: id, roomId: activeRoomId, pollId });
+  }
+  async function goPrev() {
+    if (deckPos <= 0) return;
+    if (deckPos === 1) {
+      if (activePoll) {
+        // Await the close before emitting, otherwise the round-tripped
+        // poll:closed re-fetches the still-active poll (race) and the
+        // stage never falls back to the Q&A view.
+        const res = await fetch(`/api/events/${id}/polls/${activePoll.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "closed" }) });
+        if (res.ok) getSocket().emit("poll:closed", { eventId: id, roomId: activeRoomId, pollId: activePoll.id });
+      }
+    } else {
+      activatePoll(polls[deckPos - 2].id);
+    }
+  }
+  function goNext() {
+    if (deckPos >= polls.length) return;
+    activatePoll(polls[deckPos].id);
+  }
+  async function showLeaderboardAction() {
+    const quizId = activePoll?.type === "quiz" ? activePoll.id : polls.find((p) => p.type === "quiz")?.id;
+    if (!quizId) return;
+    const res = await fetch(`/api/events/${id}/polls/${quizId}/leaderboard${roomQuery}`);
+    if (res.ok) getSocket().emit("poll:leaderboard", { eventId: id, roomId: activeRoomId, pollId: quizId, leaderboard: await res.json() });
+  }
+  function hideLeaderboard() {
+    getSocket().emit("poll:closed", { eventId: id, roomId: activeRoomId });
+  }
+  async function endEventAction() {
+    if (!window.confirm("End the event for everyone?")) return;
+    const res = await fetch(`/api/events/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "ended" }) });
+    if (res.ok) getSocket().emit("event:status", { eventId: id, status: "ended" });
+  }
+
   useEffect(() => {
     fetch(`/api/events/${id}`)
       .then((r) => r.json())
@@ -90,10 +140,15 @@ export default function PresentViewPage() {
   }, [activeRoomId]);
 
   useEffect(() => {
+    setControlParam(new URLSearchParams(window.location.search).get("control") === "1");
+  }, []);
+
+  useEffect(() => {
     if (!activeRoomId) return;
     fetchQuestions();
     fetchActivePoll();
-  }, [activeRoomId, fetchQuestions, fetchActivePoll]);
+    fetchPolls();
+  }, [activeRoomId, fetchQuestions, fetchActivePoll, fetchPolls]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -149,6 +204,8 @@ export default function PresentViewPage() {
     });
     socket.on("poll:closed", (data: { pollId?: string; roomId?: string }) => {
       if (data?.roomId && data.roomId !== activeRoomIdRef.current) return;
+      setShowLeaderboard(false);
+      lbShowingRef.current = false;
       fetchActivePoll();
     });
     socket.on("poll:leaderboard", (data: { pollId?: string; roomId?: string; leaderboard: { name: string; score: number }[] }) => {
@@ -236,102 +293,17 @@ export default function PresentViewPage() {
       className="h-screen flex flex-col overflow-hidden"
       style={{ background: "var(--bg)", position: "relative" }}
     >
-      {/* Minimal header */}
-      <header
-        className="flex-none flex items-center justify-between"
-        style={{
-          padding: "16px 40px",
-          background: "var(--surface)",
-          borderBottom: "var(--card-border)",
-        }}
-      >
-        <div className="flex items-center gap-[14px]">
-          <div
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: "calc(var(--radius-sm) * .8)",
-              background: "var(--accent)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "var(--logo-shadow)",
-            }}
-          >
-            <div
-              style={{
-                width: 17,
-                height: 17,
-                border: "3px solid var(--on-accent)",
-                borderRadius: 6,
-              }}
-            />
-          </div>
-          <div>
-            <div
-              style={{
-                fontFamily: "var(--display)",
-                fontWeight: 800,
-                fontStyle: "var(--hi-style)",
-                fontSize: 22,
-                letterSpacing: "var(--hi-spacing)",
-                textTransform: "var(--case)" as React.CSSProperties["textTransform"],
-                color: "var(--ink)",
-                lineHeight: 1,
-              }}
-            >
-              {event.name}
-            </div>
-            <div
-              style={{
-                fontFamily: "var(--mono)",
-                fontSize: "10.5px",
-                color: "var(--muted)",
-                letterSpacing: ".04em",
-                marginTop: 3,
-              }}
-            >
-              Loom &middot; live rooms
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-5">
-          {event.rooms && event.rooms.length > 1 && (
-            <RoomSwitcher
-              rooms={event.rooms}
-              activeRoomId={activeRoomId}
-              onRoomChange={(roomId) => setActiveRoomId(roomId)}
-              eventId={id}
-            />
-          )}
-          <div className="text-right">
-            <div
-              style={{
-                fontFamily: "var(--mono)",
-                fontSize: 10,
-                color: "var(--muted)",
-                letterSpacing: ".06em",
-              }}
-            >
-              JOIN CODE
-            </div>
-            <div
-              style={{
-                fontFamily: "var(--mono)",
-                fontSize: 22,
-                fontWeight: 700,
-                color: "var(--accent2)",
-                letterSpacing: ".18em",
-              }}
-            >
-              {event.accessCode}
-            </div>
-          </div>
+      {/* Slim, near-chrome-free top strip */}
+      <header className="flex-none flex items-center justify-between" style={{ padding: "12px 36px" }}>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--muted)", letterSpacing: ".06em", textTransform: "uppercase" }}>{event.name}</div>
+        <div className="flex items-baseline gap-2">
+          <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--muted)", letterSpacing: ".06em" }}>JOIN CODE</span>
+          <span style={{ fontFamily: "var(--mono)", fontSize: 20, fontWeight: 700, color: "var(--accent2)", letterSpacing: ".16em" }}>{event.accessCode}</span>
         </div>
       </header>
 
       {/* Main content */}
-      <main className="flex-1 relative overflow-hidden" style={{ padding: "40px 48px" }}>
+      <main className="flex-1 relative overflow-hidden" style={{ padding: controlMode ? "28px 48px 104px" : "28px 48px" }}>
         {/* Leaderboard view */}
         {showLeaderboard && leaderboard.length > 0 && (
           <div className="flex flex-col items-center justify-center h-full" style={{ animation: "loomRise .4s ease-out" }}>
@@ -714,6 +686,27 @@ export default function PresentViewPage() {
           </div>
         )}
       </main>
+
+      {/* Presenter control rail (host driving the stage) */}
+      {controlMode && (
+        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 40, padding: "12px 24px", background: "var(--surface)", borderTop: "var(--card-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, boxShadow: "0 -8px 24px -16px rgba(0,0,0,.6)" }}>
+          <div className="flex items-center gap-2">
+            <button onClick={goPrev} disabled={deckPos <= 0} style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 14, padding: "10px 16px", borderRadius: "var(--radius-sm)", border: "var(--card-border)", cursor: deckPos <= 0 ? "default" : "pointer", background: "var(--bg2)", color: "var(--ink)", opacity: deckPos <= 0 ? 0.4 : 1 }}>◀ Prev</button>
+            <button onClick={goNext} disabled={deckPos >= polls.length} style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 14, padding: "10px 20px", borderRadius: "var(--radius-sm)", border: "none", cursor: deckPos >= polls.length ? "default" : "pointer", background: "var(--accent)", color: "var(--on-accent)", opacity: deckPos >= polls.length ? 0.4 : 1 }}>Next ▶</button>
+            <span style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--muted)", marginLeft: 10, maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {deckPos === 0 ? "Q&A — audience questions" : `${polls[deckPos - 1]?.title ?? activePoll?.title ?? ""} · ${deckPos}/${polls.length}`}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            {showLeaderboard ? (
+              <button onClick={hideLeaderboard} style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 14, padding: "10px 16px", borderRadius: "var(--radius-sm)", border: "var(--card-border)", cursor: "pointer", background: "var(--bg2)", color: "var(--ink)" }}>Hide board</button>
+            ) : (
+              <button onClick={showLeaderboardAction} disabled={!hasQuiz} style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 14, padding: "10px 16px", borderRadius: "var(--radius-sm)", border: "var(--card-border)", cursor: hasQuiz ? "pointer" : "default", background: "var(--bg2)", color: "var(--ink)", opacity: hasQuiz ? 1 : 0.4 }}>🏆 Leaderboard</button>
+            )}
+            <button onClick={endEventAction} style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 14, padding: "10px 18px", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--accent2)", cursor: "pointer", background: "transparent", color: "var(--accent2)" }}>■ End</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -292,7 +292,8 @@ export default function HostPanel() {
               <p style={{ fontFamily: "var(--mono)", fontSize: "11px", color: "var(--muted)", letterSpacing: ".06em", marginTop: 4 }}>HOST PANEL</p>
             </div>
             <div className="flex gap-2">
-              <Link href={`/event/${id}/present`} className="transition-opacity hover:opacity-80" style={{ fontFamily: "var(--body)", fontWeight: 700, fontSize: 13, padding: "9px 16px", borderRadius: "var(--radius-sm)", background: "var(--ink)", color: "var(--surface)", textDecoration: "none" }}>Present View</Link>
+              <Link href={`/event/${id}/present?control=1`} className="transition-opacity hover:opacity-80" style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 13, padding: "9px 16px", borderRadius: "var(--radius-sm)", background: "var(--accent)", color: "var(--on-accent)", textDecoration: "none" }}>▶ Open Stage</Link>
+              <Link href={`/event/${id}/present`} className="transition-opacity hover:opacity-80" style={{ fontFamily: "var(--body)", fontWeight: 700, fontSize: 13, padding: "9px 16px", borderRadius: "var(--radius-sm)", background: "var(--ink)", color: "var(--surface)", textDecoration: "none" }}>Projector</Link>
               <Link href={`/event/${id}/analytics`} className="transition-opacity hover:opacity-80" style={{ fontFamily: "var(--body)", fontWeight: 600, fontSize: 13, padding: "9px 16px", borderRadius: "var(--radius-sm)", background: "var(--accent3)", color: "var(--on-accent)", textDecoration: "none" }}>Analytics</Link>
               <Link href={`/event/${id}`} className="transition-opacity hover:opacity-80" style={{ fontFamily: "var(--body)", fontWeight: 600, fontSize: 13, padding: "9px 16px", borderRadius: "var(--radius-sm)", background: "var(--bg2)", border: "var(--card-border)", color: "var(--ink)", textDecoration: "none" }}>Participant View</Link>
             </div>
