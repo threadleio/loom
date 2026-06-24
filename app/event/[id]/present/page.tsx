@@ -22,6 +22,7 @@ interface PollData {
   wordCloudEntries?: { text: string; count: number }[];
   timerSeconds?: number;
   activatedAt?: string | null;
+  correctAnswer?: string | null;
 }
 
 interface EventData {
@@ -428,12 +429,14 @@ export default function PresentViewPage() {
               <div className="flex items-start gap-8 flex-none">
                 {pollTimeLeft !== null && (
                   <div className="text-right">
-                    <div style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 40, lineHeight: 1, color: pollTimeLeft <= 5 ? "var(--accent)" : "var(--ink)" }}>
-                      {pollTimeLeft}s
+                    <div style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: pollTimeLeft <= 0 ? 26 : 40, lineHeight: pollTimeLeft <= 0 ? 1.5 : 1, color: pollTimeLeft <= 0 ? "var(--ok)" : pollTimeLeft <= 5 ? "var(--accent)" : "var(--ink)" }}>
+                      {pollTimeLeft <= 0 ? "TIME'S UP" : `${pollTimeLeft}s`}
                     </div>
-                    <div style={{ fontFamily: "var(--mono)", fontSize: "10.5px", color: "var(--muted)", letterSpacing: ".05em", marginTop: 4 }}>
-                      TIME LEFT
-                    </div>
+                    {pollTimeLeft > 0 && (
+                      <div style={{ fontFamily: "var(--mono)", fontSize: "10.5px", color: "var(--muted)", letterSpacing: ".05em", marginTop: 4 }}>
+                        TIME LEFT
+                      </div>
+                    )}
                   </div>
                 )}
                 <div className="text-right">
@@ -448,14 +451,22 @@ export default function PresentViewPage() {
             </div>
 
             {/* Multiple choice / quiz bars */}
-            {(activePoll.type === "multiple_choice" || activePoll.type === "quiz") && (
+            {(activePoll.type === "multiple_choice" || activePoll.type === "quiz") && (() => {
+              // Once a quiz timer runs out, reveal the answer on the big screen:
+              // the correct option goes green with a check, the rest dim.
+              const revealQuiz = activePoll.type === "quiz" && !!activePoll.correctAnswer && pollTimeLeft !== null && pollTimeLeft <= 0;
+              return (
               <div className="flex flex-col gap-4 flex-1 justify-center">
                 {activePoll.options.map((opt, i) => {
                   const pct = activePoll.totalResponses > 0 ? Math.round((opt.responseCount / activePoll.totalResponses) * 100) : 0;
                   const maxCount = Math.max(...activePoll.options.map((o) => o.responseCount), 1);
                   const isLeading = opt.responseCount === maxCount && opt.responseCount > 0;
+                  const isCorrect = revealQuiz && opt.id === activePoll.correctAnswer;
+                  const dimmed = revealQuiz && !isCorrect;
+                  const highlight = isLeading && !revealQuiz;
+                  const barColor = isCorrect ? "var(--ok)" : accents[i % accents.length];
                   return (
-                    <div key={opt.id} className="flex items-center gap-4" style={{ animation: `loomRise .3s ease-out ${i * 0.08}s both` }}>
+                    <div key={opt.id} className="flex items-center gap-4" style={{ animation: `loomRise .3s ease-out ${i * 0.08}s both`, opacity: dimmed ? 0.4 : 1, transition: "opacity .4s ease" }}>
                       <div
                         style={{
                           flex: "none",
@@ -468,15 +479,18 @@ export default function PresentViewPage() {
                           fontFamily: "var(--display)",
                           fontWeight: 800,
                           fontSize: 20,
-                          background: isLeading ? accents[i % accents.length] : "var(--bg2)",
-                          color: isLeading ? "var(--on-accent)" : "var(--ink)",
+                          background: isCorrect ? "var(--ok)" : highlight ? accents[i % accents.length] : "var(--bg2)",
+                          color: isCorrect || highlight ? "var(--on-accent)" : "var(--ink)",
                         }}
                       >
-                        {String.fromCharCode(65 + i)}
+                        {isCorrect ? "✓" : String.fromCharCode(65 + i)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-baseline mb-2">
-                          <span style={{ fontFamily: "var(--body)", fontWeight: 600, fontSize: 20, color: "var(--ink)" }}>{opt.text}</span>
+                          <span style={{ fontFamily: "var(--body)", fontWeight: 600, fontSize: 20, color: isCorrect ? "var(--ok)" : "var(--ink)" }}>
+                            {opt.text}
+                            {isCorrect && <span style={{ fontFamily: "var(--mono)", fontWeight: 700, fontSize: 12, letterSpacing: ".08em", color: "var(--ok)", marginLeft: 10 }}>CORRECT</span>}
+                          </span>
                           <span style={{ fontFamily: "var(--mono)", fontWeight: 700, fontSize: 18, color: "var(--ink)" }}>{pct}%</span>
                         </div>
                         <div style={{ height: 20, borderRadius: 999, background: "var(--track)", overflow: "hidden" }}>
@@ -484,7 +498,7 @@ export default function PresentViewPage() {
                             style={{
                               height: "100%",
                               width: `${pct}%`,
-                              background: accents[i % accents.length],
+                              background: barColor,
                               borderRadius: 999,
                               transition: "width .6s cubic-bezier(.2,.8,.2,1)",
                               minWidth: pct > 0 ? 8 : 0,
@@ -496,7 +510,8 @@ export default function PresentViewPage() {
                   );
                 })}
               </div>
-            )}
+              );
+            })()}
 
             {/* Word cloud */}
             {activePoll.type === "word_cloud" && activePoll.wordCloudEntries && (
