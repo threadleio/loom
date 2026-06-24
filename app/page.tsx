@@ -85,7 +85,7 @@ export default function HomePage() {
               lineHeight: 1,
             }}
           >
-            Crowd<span style={{ color: "var(--accent)" }}>Pulse</span>
+            Loom
           </h1>
           <p
             className="mt-3"

@@ -38,6 +38,7 @@ interface ActivePoll {
   correctAnswer?: string | null;
   options: { id: string; text: string; responseCount: number }[];
   totalResponses: number;
+  wordCloudEntries?: { text: string; count: number }[];
 }
 
 export default function EventPage() {
@@ -334,6 +335,19 @@ export default function EventPage() {
               </div>
             )}
 
+            {/* Word cloud — grows live on your phone */}
+            {activePoll.type === "word_cloud" && activePoll.wordCloudEntries && activePoll.wordCloudEntries.length > 0 && (
+              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1" style={{ marginTop: 16 }}>
+                {[...activePoll.wordCloudEntries].sort((a, b) => b.count - a.count).slice(0, 24).map((w, i) => {
+                  const max = Math.max(...activePoll.wordCloudEntries!.map((e) => e.count), 1);
+                  const size = 15 + (w.count / max) * 21;
+                  return (
+                    <span key={w.text} style={{ fontFamily: "var(--display)", fontWeight: 700, fontStyle: "var(--hi-style)", fontSize: size, lineHeight: 1.1, color: i % 3 === 0 ? "var(--accent)" : i % 3 === 1 ? "var(--accent2)" : "var(--accent3)" }}>{w.text}</span>
+                  );
+                })}
+              </div>
+            )}
+
             {/* Quiz reveal (answered or time up) */}
             {activePoll.type === "quiz" && pollAnswered && (
               <div className="space-y-2">
@@ -364,10 +378,14 @@ export default function EventPage() {
               </div>
             )}
 
-            {/* Multiple choice submitted */}
+            {/* Multiple choice submitted — alive, not a dead receipt */}
             {activePoll.type === "multiple_choice" && pollAnswered && (
-              <div className="text-center" style={{ padding: "12px 0" }}>
-                <p style={{ fontFamily: "var(--mono)", fontSize: 13, color: "var(--accent3)" }}>Response submitted ✓</p>
+              <div className="text-center" style={{ padding: "8px 0" }}>
+                <p style={{ fontFamily: "var(--display)", fontWeight: 800, fontStyle: "var(--hi-style)", fontSize: 20, letterSpacing: "var(--hi-spacing)", textTransform: "var(--case)" as React.CSSProperties["textTransform"], color: "var(--accent2)", margin: 0 }}>You&rsquo;re in ✓</p>
+                <p style={{ fontFamily: "var(--mono)", fontSize: 14, color: "var(--ink)", marginTop: 8 }}>
+                  <span style={{ color: "var(--accent)", fontWeight: 700 }}>{activePoll.totalResponses}</span> {activePoll.totalResponses === 1 ? "response" : "responses"} so far
+                </p>
+                <p style={{ fontFamily: "var(--body)", fontSize: 13, color: "var(--muted)", marginTop: 8 }}>Results are up on the big screen ☝️</p>
               </div>
             )}
           </div>

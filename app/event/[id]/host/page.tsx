@@ -12,9 +12,8 @@ interface EventData {
   id: string;
   name: string;
   accessCode: string;
-  startDate: string;
-  endDate: string;
   moderationEnabled: boolean;
+  createdAt: string;
   status: string;
   endedAt?: string | null;
   rooms: { id: string; name: string }[];
@@ -345,12 +344,10 @@ export default function HostPanel() {
             <div style={{ padding: 22, background: "var(--card)", border: "var(--card-border)", borderRadius: "var(--radius)", boxShadow: "var(--card-shadow)" }}>
               <h2 style={{ ...labelStyle, marginBottom: 16 }}>Event Details</h2>
               <dl className="space-y-3">
-                {[{ label: "Start", value: new Date(event.startDate).toLocaleString() }, { label: "End", value: new Date(event.endDate).toLocaleString() }].map((item) => (
-                  <div key={item.label} className="flex justify-between">
-                    <dt style={{ fontFamily: "var(--mono)", fontSize: "10.5px", color: "var(--muted)", letterSpacing: ".04em" }}>{item.label}</dt>
-                    <dd style={{ fontFamily: "var(--body)", fontWeight: 600, fontSize: 14, color: "var(--ink)", margin: 0 }}>{item.value}</dd>
-                  </div>
-                ))}
+                <div className="flex justify-between">
+                  <dt style={{ fontFamily: "var(--mono)", fontSize: "10.5px", color: "var(--muted)", letterSpacing: ".04em" }}>Created</dt>
+                  <dd style={{ fontFamily: "var(--body)", fontWeight: 600, fontSize: 14, color: "var(--ink)", margin: 0 }}>{new Date(event.createdAt).toLocaleString()}</dd>
+                </div>
                 <div className="flex justify-between">
                   <dt style={{ fontFamily: "var(--mono)", fontSize: "10.5px", color: "var(--muted)", letterSpacing: ".04em" }}>Moderation</dt>
                   <dd style={{ fontFamily: "var(--body)", fontWeight: 600, fontSize: 14, color: event.moderationEnabled ? "var(--accent3)" : "var(--accent2)", margin: 0 }}>

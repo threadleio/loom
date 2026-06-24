@@ -59,17 +59,16 @@ export const authOptions: NextAuthOptions = {
 
         // Mocked SSO: any corporate email resolves to a host identity,
         // mapping the token's identity into the database (find-or-create).
+        const displayName = displayNameFromEmail(email);
         const existing = await prisma.user.findUnique({ where: { email } });
-        const user =
-          existing ??
-          (await prisma.user.create({
-            data: {
-              email,
-              displayName: displayNameFromEmail(email),
-              isGuest: false,
-              role: "host",
-            },
-          }));
+        const user = existing
+          ? await prisma.user.update({
+              where: { email },
+              data: { displayName, isGuest: false, role: "host" },
+            })
+          : await prisma.user.create({
+              data: { email, displayName, isGuest: false, role: "host" },
+            });
 
         return { id: user.id, name: user.displayName, email: user.email, role: user.role };
       },

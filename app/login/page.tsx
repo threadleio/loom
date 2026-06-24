@@ -3,7 +3,6 @@
 import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { SkinSwitcher } from "@/components/skin-switcher";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -87,10 +86,6 @@ export default function LoginPage() {
       className="flex min-h-screen flex-col items-center justify-center p-4"
       style={{ background: "var(--bg)" }}
     >
-      <div className="absolute top-4 right-6">
-        <SkinSwitcher />
-      </div>
-
       <div
         className="w-full max-w-md p-8"
         style={{

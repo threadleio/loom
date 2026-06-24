@@ -141,8 +141,11 @@ export default function PresentViewPage() {
     });
     socket.on("poll:response", (data: { pollId?: string; roomId?: string }) => {
       if (data?.roomId && data.roomId !== activeRoomIdRef.current) return;
-      fetchActivePoll();
-      if (lbShowingRef.current && lbPollIdRef.current) fetchLeaderboard(lbPollIdRef.current);
+      if (lbShowingRef.current && lbPollIdRef.current) {
+        fetchLeaderboard(lbPollIdRef.current);
+      } else {
+        fetchActivePoll();
+      }
     });
     socket.on("poll:closed", (data: { pollId?: string; roomId?: string }) => {
       if (data?.roomId && data.roomId !== activeRoomIdRef.current) return;
@@ -288,7 +291,7 @@ export default function PresentViewPage() {
                 marginTop: 3,
               }}
             >
-              CrowdPulse &middot; live rooms
+              Loom &middot; live rooms
             </div>
           </div>
         </div>

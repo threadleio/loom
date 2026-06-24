@@ -1,7 +1,5 @@
 "use client";
 
-import { SkinSwitcher } from "./skin-switcher";
-
 interface AppHeaderProps {
   participantCount?: number;
   joinCode?: string;
@@ -11,7 +9,6 @@ interface AppHeaderProps {
 export function AppHeader({
   participantCount,
   joinCode,
-  showSkinSwitcher = true,
 }: AppHeaderProps) {
   return (
     <header
@@ -56,7 +53,7 @@ export function AppHeader({
               color: "var(--ink)",
             }}
           >
-            CrowdPulse
+            Loom
           </div>
           <div
             style={{
@@ -141,17 +138,6 @@ export function AppHeader({
           </div>
         )}
 
-        {showSkinSwitcher && (
-          <div
-            className="flex items-center"
-            style={{
-              paddingLeft: 16,
-              borderLeft: "1px solid var(--line)",
-            }}
-          >
-            <SkinSwitcher />
-          </div>
-        )}
       </div>
     </header>
   );

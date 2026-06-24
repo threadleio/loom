@@ -41,7 +41,7 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
-  title: "CrowdPulse - Live Rooms",
+  title: "Loom — Live Rooms",
   description: "In-house audience interaction platform for meetings and events",
 };
 
@@ -59,7 +59,7 @@ export default function RootLayout({
   ].join(" ");
 
   return (
-    <html lang="en" data-theme="loom" className={`${fontVars} h-full antialiased`}>
+    <html lang="en" data-theme="arcade" className={`${fontVars} h-full antialiased`}>
       <body className="min-h-full flex flex-col" style={{ fontFamily: "var(--body)", color: "var(--ink)", background: "var(--bg)" }}>
         <Providers>{children}</Providers>
       </body>

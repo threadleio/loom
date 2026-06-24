@@ -10,8 +10,6 @@ export default function CreateEventPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [name, setName] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
   const [passcode, setPasscode] = useState("");
   const [moderationEnabled, setModerationEnabled] = useState(false);
   const [error, setError] = useState("");
@@ -66,7 +64,7 @@ export default function CreateEventPage() {
     const res = await fetch("/api/events", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, startDate, endDate, passcode, moderationEnabled }),
+      body: JSON.stringify({ name, passcode, moderationEnabled }),
     });
 
     if (!res.ok) {
@@ -133,38 +131,15 @@ export default function CreateEventPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label style={labelStyle}>Event Name</label>
+              <label style={labelStyle}>Event Name (optional)</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Q2 All Hands"
                 style={inputStyle}
-                required
+                autoFocus
               />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label style={labelStyle}>Start Date</label>
-                <input
-                  type="datetime-local"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  style={inputStyle}
-                  required
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>End Date</label>
-                <input
-                  type="datetime-local"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  style={inputStyle}
-                  required
-                />
-              </div>
             </div>
 
             <div>

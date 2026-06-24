@@ -21,12 +21,7 @@ export async function POST(request: Request) {
   const body = await request.json();
   const { name, startDate, endDate, passcode, moderationEnabled } = body;
 
-  if (!name || !startDate || !endDate) {
-    return NextResponse.json(
-      { error: "Name, start date, and end date are required" },
-      { status: 400 }
-    );
-  }
+  const now = new Date();
 
   let accessCode = generateAccessCode();
   let exists = await prisma.event.findUnique({ where: { accessCode } });
@@ -37,9 +32,9 @@ export async function POST(request: Request) {
 
   const event = await prisma.event.create({
     data: {
-      name,
-      startDate: new Date(startDate),
-      endDate: new Date(endDate),
+      name: (typeof name === "string" && name.trim()) || "Live session",
+      startDate: startDate ? new Date(startDate) : now,
+      endDate: endDate ? new Date(endDate) : now,
       accessCode,
       passcode: passcode || null,
       moderationEnabled: moderationEnabled || false,

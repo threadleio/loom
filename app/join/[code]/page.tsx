@@ -3,7 +3,6 @@
 import { useSession, signIn } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { SkinSwitcher } from "@/components/skin-switcher";
 
 export default function JoinByCodePage() {
   const { code } = useParams<{ code: string }>();
@@ -99,10 +98,6 @@ export default function JoinByCodePage() {
       className="flex min-h-screen flex-col items-center justify-center p-4"
       style={{ background: "var(--bg)" }}
     >
-      <div className="absolute top-4 right-6">
-        <SkinSwitcher />
-      </div>
-
       <div
         className="w-full max-w-md p-8 text-center"
         style={{
