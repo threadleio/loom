@@ -1,0 +1,44 @@
+# Render Blueprint for Loom.
+#
+# This app is a custom Node server (server.ts) running Next.js + Socket.IO,
+# backed by SQLite. It needs a long-running process (Web Service) and a
+# persistent disk for the database.
+#
+# How to deploy:
+#   1. Render Dashboard -> New -> Blueprint -> pick the threadleio/loom repo.
+#   2. Render reads this file and creates the service. Approve the plan.
+#   3. After the first deploy, set NEXTAUTH_URL to the service's public URL
+#      (e.g. https://loom.onrender.com) and trigger a redeploy.
+#   4. Log in at /login -> "Sign in with Company SSO" -> any email = host.
+#      Fallback login: host@loom.demo / LoomDemo2026! (seeded on every deploy).
+#
+# Note: the persistent disk requires a paid plan (Starter+). On the free plan
+# SQLite would reset on every restart — remove the `disk:` block and point
+# DATABASE_URL at file:./prisma/dev.db only if you accept ephemeral data.
+
+services:
+  - type: web
+    name: loom
+    runtime: node
+    plan: starter
+    region: frankfurt
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /
+    buildCommand: npm ci --include=dev && npx prisma generate && npm run build
+    startCommand: npx prisma migrate deploy && (npx tsx prisma/seed.ts || true) && npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "20"
+      - key: DATABASE_URL
+        value: file:/var/data/loom.db
+      - key: NEXTAUTH_SECRET
+        generateValue: true
+      - key: NEXTAUTH_URL
+        sync: false
+    disk:
+      name: loom-data
+      mountPath: /var/data
+      sizeGB: 1
