@@ -354,7 +354,7 @@ export default function EventPage() {
                 {activePoll.options.map((opt, i) => {
                   const isCorrect = activePoll.correctAnswer === opt.id;
                   const isMine = selectedOptionId === opt.id;
-                  const bg = isCorrect ? "var(--accent2)" : isMine ? "var(--accent)" : "var(--bg)";
+                  const bg = isCorrect ? "var(--ok)" : isMine ? "var(--accent2)" : "var(--bg)";
                   const fg = isCorrect || isMine ? "var(--on-accent)" : "var(--ink)";
                   return (
                     <div key={opt.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: 12, borderRadius: "var(--radius-sm)", fontFamily: "var(--body)", fontWeight: 600, fontSize: 14, background: bg, color: fg, border: "1.5px solid var(--line)" }}>
@@ -366,7 +366,7 @@ export default function EventPage() {
                   );
                 })}
                 <div className="text-center" style={{ paddingTop: 8 }}>
-                  <p style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 20, color: pollResult?.correct ? "var(--accent2)" : "var(--accent)", margin: 0 }}>
+                  <p style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 20, color: pollResult?.correct ? "var(--ok)" : "var(--accent2)", margin: 0 }}>
                     {pollResult ? (pollResult.correct ? `Correct! +${pollResult.score} pts` : "Not quite!") : "Time's up!"}
                   </p>
                   {myRank && (
@@ -407,7 +407,7 @@ export default function EventPage() {
                 </span>
               )}
               <span style={{ fontFamily: "var(--mono)", fontSize: "10.5px", color: "var(--muted)" }}>{newQuestion.length}/300</span>
-              <button type="submit" disabled={submitting || !newQuestion.trim()} className="cursor-pointer transition-opacity disabled:opacity-50" style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 14, padding: "9px 18px", border: "none", borderRadius: "var(--radius-sm)", background: "var(--accent)", color: "var(--on-accent)" }}>
+              <button type="submit" disabled={submitting || !newQuestion.trim()} className="transition-colors" style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 14, padding: "9px 18px", border: "none", borderRadius: "var(--radius-sm)", background: newQuestion.trim() ? "var(--accent)" : "var(--bg2)", color: newQuestion.trim() ? "var(--on-accent)" : "var(--muted)", cursor: newQuestion.trim() ? "pointer" : "default" }}>
                 {submitting ? "Sending..." : "Send"}
               </button>
             </div>

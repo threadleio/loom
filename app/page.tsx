@@ -67,6 +67,13 @@ export default function HomePage() {
     setLoading(false);
   }
 
+  // The submit is "waiting" (neutral) until the current step's field is filled,
+  // rather than rendering as a washed-out accent that reads as broken.
+  const fieldEmpty =
+    (step === "code" && !code) ||
+    (step === "name" && !guestName) ||
+    (step === "passcode" && !passcode);
+
   return (
     <div className="flex min-h-screen flex-col" style={{ background: "var(--bg)" }}>
       <AppHeader showSkinSwitcher />
@@ -230,8 +237,8 @@ export default function HomePage() {
 
             <button
               type="submit"
-              disabled={loading || (step === "code" && !code) || (step === "name" && !guestName) || (step === "passcode" && !passcode)}
-              className="w-full cursor-pointer transition-opacity disabled:opacity-50"
+              disabled={loading || fieldEmpty}
+              className="w-full transition-colors"
               style={{
                 fontFamily: "var(--display)",
                 fontWeight: 800,
@@ -239,8 +246,9 @@ export default function HomePage() {
                 padding: "14px",
                 border: "none",
                 borderRadius: "var(--radius-sm)",
-                background: "var(--accent)",
-                color: "var(--on-accent)",
+                background: fieldEmpty ? "var(--bg2)" : "var(--accent)",
+                color: fieldEmpty ? "var(--muted)" : "var(--on-accent)",
+                cursor: fieldEmpty ? "default" : "pointer",
               }}
             >
               {loading ? "Joining..." : step === "code" && !session ? "Next" : "Join Event"}
