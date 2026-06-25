@@ -33,6 +33,7 @@ interface ActivePoll {
   title: string;
   type: string;
   status: string;
+  imageUrl?: string | null;
   timerSeconds: number;
   activatedAt?: string | null;
   correctAnswer?: string | null;
@@ -314,6 +315,10 @@ export default function EventPage() {
               )}
             </div>
             <h3 style={{ fontFamily: "var(--display)", fontWeight: 800, fontStyle: "var(--hi-style)", fontSize: 20, letterSpacing: "var(--hi-spacing)", textTransform: "var(--case)" as React.CSSProperties["textTransform"], color: "var(--ink)", margin: 0, marginBottom: 14 }}>{activePoll.title}</h3>
+            {activePoll.imageUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={activePoll.imageUrl} alt="" style={{ width: "100%", maxHeight: 220, objectFit: "contain", borderRadius: "var(--radius-sm)", marginBottom: 14, background: "var(--bg)" }} />
+            )}
 
             {/* Multiple choice / Quiz options */}
             {(activePoll.type === "multiple_choice" || activePoll.type === "quiz") && !pollAnswered && (

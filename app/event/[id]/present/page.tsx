@@ -24,6 +24,7 @@ interface PollData {
   timerSeconds?: number;
   activatedAt?: string | null;
   correctAnswer?: string | null;
+  imageUrl?: string | null;
 }
 
 interface EventData {
@@ -463,6 +464,13 @@ export default function PresentViewPage() {
                 </div>
               </div>
             </div>
+
+            {activePoll.imageUrl && (
+              <div className="flex-none flex justify-center" style={{ margin: "4px 0 22px" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={activePoll.imageUrl} alt="" style={{ maxHeight: "34vh", maxWidth: "100%", objectFit: "contain", borderRadius: "var(--radius)" }} />
+              </div>
+            )}
 
             {/* Multiple choice / quiz bars */}
             {(activePoll.type === "multiple_choice" || activePoll.type === "quiz") && (() => {

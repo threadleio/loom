@@ -53,6 +53,7 @@ export async function GET(
     title: poll.title,
     type: poll.type,
     status: poll.status,
+    imageUrl: poll.imageUrl,
     timerSeconds: poll.timerSeconds,
     activatedAt: poll.activatedAt,
     correctAnswer: poll.correctAnswer,
