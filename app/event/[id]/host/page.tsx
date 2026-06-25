@@ -39,6 +39,7 @@ interface PollData {
   totalResponses: number;
   timerSeconds: number;
   correctAnswer: string | null;
+  imageUrl?: string | null;
 }
 
 type Tab = "live" | "pending" | "archived" | "polls";
@@ -101,6 +102,7 @@ export default function HostPanel() {
 
   // Poll creation form
   const [showPollForm, setShowPollForm] = useState(false);
+  const [editingPollId, setEditingPollId] = useState<string | null>(null);
   const [pollTitle, setPollTitle] = useState("");
   const [pollType, setPollType] = useState("multiple_choice");
   const [pollOptions, setPollOptions] = useState(["", ""]);
@@ -179,10 +181,53 @@ export default function HostPanel() {
     }
   }
 
+  function resetPollForm() {
+    setPollTitle("");
+    setPollType("multiple_choice");
+    setPollOptions(["", ""]);
+    setPollCorrectIdx(0);
+    setPollTimer(30);
+    setPollImageUrl("");
+    setEditingPollId(null);
+    setShowPollForm(false);
+  }
+
+  function startEdit(poll: PollData) {
+    setEditingPollId(poll.id);
+    setPollTitle(poll.title);
+    setPollType(poll.type);
+    setPollOptions(poll.type === "word_cloud" ? ["", ""] : poll.options.map((o) => o.text));
+    setPollCorrectIdx(Math.max(0, poll.options.findIndex((o) => o.id === poll.correctAnswer)));
+    setPollTimer(poll.timerSeconds || 30);
+    setPollImageUrl(poll.imageUrl || "");
+    setShowPollForm(true);
+  }
+
   async function createPoll(e: React.FormEvent) {
     e.preventDefault();
     const opts = pollType === "word_cloud" ? [] : pollOptions.filter((o) => o.trim());
     if (!pollTitle.trim()) return;
+
+    // Editing an existing draft: replace its contents in place.
+    if (editingPollId) {
+      const res = await fetch(`/api/events/${id}/polls/${editingPollId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: pollTitle,
+          type: pollType,
+          options: opts,
+          imageUrl: pollImageUrl || undefined,
+          timerSeconds: pollType === "quiz" ? pollTimer : undefined,
+          correctOptionIndex: pollType === "quiz" ? pollCorrectIdx : undefined,
+        }),
+      });
+      if (res.ok) {
+        resetPollForm();
+        fetchPolls();
+      }
+      return;
+    }
 
     const res = await fetch(`/api/events/${id}/polls`, {
       method: "POST",
@@ -201,17 +246,9 @@ export default function HostPanel() {
     if (res.ok) {
       const poll = await res.json();
       if (pollType === "quiz" && poll.options[pollCorrectIdx]) {
-        await fetch(`/api/events/${id}/polls/${poll.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "draft" }),
-        });
         await prismaSetCorrectAnswer(poll.id, poll.options[pollCorrectIdx].id);
       }
-      setPollTitle("");
-      setPollOptions(["", ""]);
-      setPollImageUrl("");
-      setShowPollForm(false);
+      resetPollForm();
       fetchPolls();
     }
   }
@@ -562,7 +599,7 @@ export default function HostPanel() {
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--muted)", letterSpacing: ".05em" }}>MANAGE POLLS &amp; QUIZZES</span>
-                    <button onClick={() => setShowPollForm(!showPollForm)} className="cursor-pointer" style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 13, padding: "8px 16px", border: "none", borderRadius: "var(--radius-sm)", background: "var(--accent)", color: "var(--on-accent)" }}>
+                    <button onClick={() => { const open = !showPollForm; resetPollForm(); if (open) setShowPollForm(true); }} className="cursor-pointer" style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 13, padding: "8px 16px", border: "none", borderRadius: "var(--radius-sm)", background: "var(--accent)", color: "var(--on-accent)" }}>
                       {showPollForm ? "Cancel" : "+ Create Poll"}
                     </button>
                   </div>
@@ -615,7 +652,7 @@ export default function HostPanel() {
                           </div>
                         )}
                         <button type="submit" className="cursor-pointer w-full" style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 14, padding: "10px", border: "none", borderRadius: "var(--radius-sm)", background: "var(--accent)", color: "var(--on-accent)" }}>
-                          Save as Draft
+                          {editingPollId ? "Save changes" : "Save as Draft"}
                         </button>
                       </div>
                     </form>
@@ -649,6 +686,9 @@ export default function HostPanel() {
                             </p>
                           </div>
                           <div className="flex gap-1 flex-none">
+                            {p.status === "draft" && (
+                              <button onClick={() => startEdit(p)} style={{ ...btnStyle("var(--bg2)", "var(--ink)"), border: "var(--card-border)" }}>Edit</button>
+                            )}
                             {p.status === "draft" && (
                               <button onClick={() => setPollStatus(p.id, "active")} style={btnStyle("var(--accent)", "var(--on-accent)")}>Launch</button>
                             )}
