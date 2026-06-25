@@ -39,3 +39,25 @@ export async function PATCH(
 
   return NextResponse.json(updated);
 }
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string; pollId: string }> }
+) {
+  const { pollId } = await params;
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const poll = await prisma.poll.findUnique({
+    where: { id: pollId },
+    include: { room: { include: { event: true } } },
+  });
+  if (!poll) return NextResponse.json({ error: "Poll not found" }, { status: 404 });
+  if (poll.room.event.createdBy !== session.user.id)
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  // Options and responses cascade from the poll.
+  await prisma.poll.delete({ where: { id: pollId } });
+  return NextResponse.json({ ok: true });
+}

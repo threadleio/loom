@@ -61,6 +61,7 @@ model Poll {
   correctAnswer String?
   timerSeconds Int      @default(30)
   activatedAt DateTime?
+  order       Int      @default(0)
   createdAt   DateTime @default(now())
 
   room      Room           @relation(fields: [roomId], references: [id], onDelete: Cascade)

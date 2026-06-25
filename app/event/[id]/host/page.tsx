@@ -263,6 +263,26 @@ export default function HostPanel() {
     }
   }
 
+  async function deletePoll(pollId: string, title: string) {
+    if (!window.confirm(`Delete poll "${title}"? This can't be undone.`)) return;
+    const res = await fetch(`/api/events/${id}/polls/${pollId}`, { method: "DELETE" });
+    if (res.ok) fetchPolls();
+  }
+
+  async function movePoll(index: number, dir: -1 | 1) {
+    const target = index + dir;
+    if (target < 0 || target >= polls.length) return;
+    const reordered = [...polls];
+    [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
+    setPolls(reordered); // optimistic
+    await fetch(`/api/events/${id}/polls/reorder`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderedIds: reordered.map((p) => p.id) }),
+    });
+    fetchPolls();
+  }
+
   async function setEventStatus(newStatus: string) {
     if (newStatus === "live" && polls.length === 0 && !window.confirm("This event has no polls yet. Go live anyway? You can still add them once you're live.")) return;
     if (newStatus === "ended" && !window.confirm("End the event for everyone? Participants will no longer be able to join or respond.")) return;
@@ -610,8 +630,12 @@ export default function HostPanel() {
                         </button>
                       </div>
                     ) : (
-                      polls.map((p) => (
+                      polls.map((p, idx) => (
                         <div key={p.id} className="flex items-center gap-4" style={{ padding: "14px 16px", borderRadius: "var(--radius-sm)", border: p.status === "active" ? "2px solid var(--accent)" : "var(--card-border)", background: p.status === "active" ? "var(--bg2)" : "var(--surface)" }}>
+                          <div className="flex flex-col flex-none" style={{ gap: 2 }}>
+                            <button onClick={() => movePoll(idx, -1)} disabled={idx === 0} title="Move up" style={{ fontFamily: "var(--mono)", fontSize: 11, lineHeight: 1, padding: "2px 7px", borderRadius: 4, border: "var(--card-border)", background: "var(--bg2)", color: "var(--muted)", cursor: idx === 0 ? "default" : "pointer", opacity: idx === 0 ? 0.3 : 1 }}>▲</button>
+                            <button onClick={() => movePoll(idx, 1)} disabled={idx === polls.length - 1} title="Move down" style={{ fontFamily: "var(--mono)", fontSize: 11, lineHeight: 1, padding: "2px 7px", borderRadius: 4, border: "var(--card-border)", background: "var(--bg2)", color: "var(--muted)", cursor: idx === polls.length - 1 ? "default" : "pointer", opacity: idx === polls.length - 1 ? 0.3 : 1 }}>▼</button>
+                          </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <span style={{ fontFamily: "var(--body)", fontWeight: 600, fontSize: 15, color: "var(--ink)" }}>{p.title}</span>
@@ -637,6 +661,7 @@ export default function HostPanel() {
                             {p.status === "closed" && (
                               <button onClick={() => setPollStatus(p.id, "active")} style={{ ...btnStyle("var(--bg2)", "var(--ink)"), border: "var(--card-border)" }}>Reopen</button>
                             )}
+                            <button onClick={() => deletePoll(p.id, p.title)} title="Delete poll" aria-label="Delete poll" style={{ fontFamily: "var(--mono)", fontSize: 13, padding: "7px 10px", borderRadius: "var(--radius-sm)", border: "var(--card-border)", background: "transparent", color: "var(--muted)", cursor: "pointer" }}>🗑</button>
                           </div>
                         </div>
                       ))

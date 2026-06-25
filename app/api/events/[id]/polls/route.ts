@@ -28,7 +28,7 @@ export async function GET(
       options: { orderBy: { order: "asc" } },
       _count: { select: { responses: true } },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ order: "asc" }, { createdAt: "asc" }],
   });
 
   return NextResponse.json(
@@ -73,6 +73,7 @@ export async function POST(
   if (!title || !type)
     return NextResponse.json({ error: "Title and type required" }, { status: 400 });
 
+  const pollOrder = await prisma.poll.count({ where: { roomId: mainRoom.id } });
   const poll = await prisma.poll.create({
     data: {
       roomId: mainRoom.id,
@@ -81,6 +82,7 @@ export async function POST(
       imageUrl: imageUrl || null,
       timerSeconds: timerSeconds || 30,
       correctAnswer: correctAnswer || null,
+      order: pollOrder,
       options: {
         create: (options || []).map((text: string, i: number) => ({
           text,
