@@ -67,8 +67,8 @@ app.prepare().then(() => {
       io.to(`event:${data.eventId}`).emit("poll:closed", { pollId: data.pollId, roomId: data.roomId });
     });
 
-    socket.on("poll:leaderboard", (data: { eventId: string; roomId?: string; pollId?: string; leaderboard: { name: string; score: number }[] }) => {
-      io.to(`event:${data.eventId}`).emit("poll:leaderboard", { leaderboard: data.leaderboard, roomId: data.roomId, pollId: data.pollId });
+    socket.on("poll:leaderboard", (data: { eventId: string; roomId?: string; pollId?: string; leaderboard: { name: string; score: number }[]; title?: string }) => {
+      io.to(`event:${data.eventId}`).emit("poll:leaderboard", { leaderboard: data.leaderboard, roomId: data.roomId, pollId: data.pollId, title: data.title });
     });
 
     socket.on("event:status", (data: { eventId: string; status: string }) => {

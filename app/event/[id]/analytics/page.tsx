@@ -29,6 +29,7 @@ interface Analytics {
     status: string;
     totalResponses: number;
     options: { text: string; responses: number }[];
+    responses: { participant: string; answer: string; correct: boolean | null; points: number; at: string }[];
   }[];
 }
 
@@ -79,6 +80,10 @@ export default function AnalyticsPage() {
       csv += `Poll,"${p.title.replace(/"/g, '""')}",,${p.totalResponses},${p.status},,\n`;
       for (const o of p.options) {
         csv += `Poll Option,"${o.text.replace(/"/g, '""')}",,${o.responses},,,\n`;
+      }
+      for (const r of p.responses) {
+        const correctness = r.correct === null ? "" : r.correct ? "correct" : "incorrect";
+        csv += `Response,"${p.title.replace(/"/g, '""')}","${r.participant.replace(/"/g, '""')}",${r.points},${correctness},${r.at},"${r.answer.replace(/"/g, '""')}"\n`;
       }
     }
 

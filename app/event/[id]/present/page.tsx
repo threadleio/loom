@@ -47,6 +47,7 @@ export default function PresentViewPage() {
   const [focusedQuestion, setFocusedQuestion] = useState<Question | null>(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboard, setLeaderboard] = useState<{ name: string; score: number }[]>([]);
+  const [leaderboardTitle, setLeaderboardTitle] = useState("Overall");
   const [activeRoomId, setActiveRoomId] = useState<string>("");
   const [pollTimeLeft, setPollTimeLeft] = useState<number | null>(null);
   const lbPollIdRef = useRef<string | null>(null);
@@ -112,11 +113,14 @@ export default function PresentViewPage() {
     if (deckPos >= polls.length) return;
     activatePoll(polls[deckPos].id);
   }
-  async function showLeaderboardAction() {
-    const quizId = activePoll?.type === "quiz" ? activePoll.id : polls.find((p) => p.type === "quiz")?.id;
+  async function showLeaderboardAction(single = false) {
+    const quizId = single
+      ? (activePoll?.type === "quiz" ? activePoll.id : null)
+      : (activePoll?.type === "quiz" ? activePoll.id : polls.find((p) => p.type === "quiz")?.id);
     if (!quizId) return;
-    const res = await fetch(`/api/events/${id}/polls/${quizId}/leaderboard${roomQuery}`);
-    if (res.ok) getSocket().emit("poll:leaderboard", { eventId: id, roomId: activeRoomId, pollId: quizId, leaderboard: await res.json() });
+    const singleParam = single ? `${roomQuery ? "&" : "?"}single=1` : "";
+    const res = await fetch(`/api/events/${id}/polls/${quizId}/leaderboard${roomQuery}${singleParam}`);
+    if (res.ok) getSocket().emit("poll:leaderboard", { eventId: id, roomId: activeRoomId, pollId: quizId, leaderboard: await res.json(), title: single ? "This question" : "Overall" });
   }
   function hideLeaderboard() {
     getSocket().emit("poll:closed", { eventId: id, roomId: activeRoomId });
@@ -211,9 +215,10 @@ export default function PresentViewPage() {
       lbShowingRef.current = false;
       fetchActivePoll();
     });
-    socket.on("poll:leaderboard", (data: { pollId?: string; roomId?: string; leaderboard: { name: string; score: number }[] }) => {
+    socket.on("poll:leaderboard", (data: { pollId?: string; roomId?: string; leaderboard: { name: string; score: number }[]; title?: string }) => {
       if (data?.roomId && data.roomId !== activeRoomIdRef.current) return;
       setLeaderboard(data.leaderboard);
+      setLeaderboardTitle(data.title || "Overall");
       setShowLeaderboard(true);
       lbShowingRef.current = true;
       lbPollIdRef.current = data.pollId ?? null;
@@ -332,11 +337,12 @@ export default function PresentViewPage() {
                 letterSpacing: "var(--hi-spacing)",
                 textTransform: "var(--case)" as React.CSSProperties["textTransform"],
                 color: "var(--ink)",
-                marginBottom: 32,
+                marginBottom: 8,
               }}
             >
               Leaderboard
             </h2>
+            <p style={{ fontFamily: "var(--mono)", fontSize: 13, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--accent)", margin: "0 0 30px" }}>{leaderboardTitle}</p>
             <div className="w-full max-w-2xl space-y-3">
               {leaderboard.slice(0, 10).map((p, i) => {
                 const maxScore = leaderboard[0]?.score || 1;
@@ -738,7 +744,12 @@ export default function PresentViewPage() {
             {showLeaderboard ? (
               <button onClick={hideLeaderboard} style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 14, padding: "10px 16px", borderRadius: "var(--radius-sm)", border: "var(--card-border)", cursor: "pointer", background: "var(--bg2)", color: "var(--ink)" }}>Hide board</button>
             ) : (
-              <button onClick={showLeaderboardAction} disabled={!hasQuiz} style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 14, padding: "10px 16px", borderRadius: "var(--radius-sm)", border: "var(--card-border)", cursor: hasQuiz ? "pointer" : "default", background: "var(--bg2)", color: "var(--ink)", opacity: hasQuiz ? 1 : 0.4 }}>🏆 Leaderboard</button>
+              <>
+                {activePoll?.type === "quiz" && (
+                  <button onClick={() => showLeaderboardAction(true)} title="Top scorers on this question only" style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 14, padding: "10px 14px", borderRadius: "var(--radius-sm)", border: "var(--card-border)", cursor: "pointer", background: "var(--bg2)", color: "var(--ink)" }}>🏆 This&nbsp;Q</button>
+                )}
+                <button onClick={() => showLeaderboardAction(false)} disabled={!hasQuiz} title="Cumulative scores across all questions" style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 14, padding: "10px 14px", borderRadius: "var(--radius-sm)", border: "var(--card-border)", cursor: hasQuiz ? "pointer" : "default", background: "var(--bg2)", color: "var(--ink)", opacity: hasQuiz ? 1 : 0.4 }}>🏆 Overall</button>
+              </>
             )}
             <button onClick={endEventAction} style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 14, padding: "10px 18px", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--accent2)", cursor: "pointer", background: "transparent", color: "var(--accent2)" }}>■ End</button>
           </div>

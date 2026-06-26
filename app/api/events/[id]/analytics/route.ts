@@ -91,15 +91,27 @@ export async function GET(
       isAnonymous: q.isAnonymous,
       createdAt: q.createdAt,
     })),
-    polls: polls.map((p) => ({
-      title: p.title,
-      type: p.type,
-      status: p.status,
-      totalResponses: p._count.responses,
-      options: p.options.map((o) => ({
-        text: o.text,
-        responses: o._count.responses,
-      })),
-    })),
+    polls: polls.map((p) => {
+      const optionText = new Map(p.options.map((o) => [o.id, o.text]));
+      return {
+        title: p.title,
+        type: p.type,
+        status: p.status,
+        totalResponses: p._count.responses,
+        options: p.options.map((o) => ({
+          text: o.text,
+          responses: o._count.responses,
+        })),
+        // Per-participant detail: who answered what, and the points they
+        // earned on this question (each question scores independently).
+        responses: p.responses.map((r) => ({
+          participant: r.user.displayName,
+          answer: r.optionId ? optionText.get(r.optionId) ?? "" : r.textValue ?? "",
+          correct: p.type === "quiz" ? r.score > 0 : null,
+          points: r.score,
+          at: r.answeredAt,
+        })),
+      };
+    }),
   });
 }

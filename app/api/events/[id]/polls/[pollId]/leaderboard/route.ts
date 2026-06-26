@@ -5,9 +5,12 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string; pollId: string }> }
 ) {
-  const { id } = await params;
+  const { id, pollId } = await params;
   const { searchParams } = new URL(request.url);
   const roomIdParam = searchParams.get("roomId");
+  // single=1 → just this question's scores (a standalone-tournament round),
+  // otherwise the cumulative score across all quiz polls.
+  const single = searchParams.get("single") === "1";
 
   const event = await prisma.event.findUnique({
     where: { id },
@@ -25,8 +28,9 @@ export async function GET(
     select: { id: true },
   });
 
+  const pollIds = single ? [pollId] : quizPolls.map((p) => p.id);
   const responses = await prisma.pollResponse.findMany({
-    where: { pollId: { in: quizPolls.map((p) => p.id) } },
+    where: { pollId: { in: pollIds } },
     include: { user: { select: { displayName: true } } },
   });
 
