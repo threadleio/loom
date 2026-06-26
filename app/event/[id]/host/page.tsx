@@ -8,6 +8,36 @@ import { getSocket } from "@/lib/socket";
 import { AppHeader } from "@/components/app-header";
 import { RoomSwitcher } from "@/components/room-switcher";
 
+// Read an image file and shrink it client-side to a compact JPEG data URL,
+// so it can be stored inline in the poll's imageUrl without extra infra.
+async function fileToDownscaledDataUrl(file: File, maxDim = 1280, quality = 0.82): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new window.Image();
+    i.onload = () => resolve(i);
+    i.onerror = reject;
+    i.src = dataUrl;
+  });
+  let { width, height } = img;
+  if (Math.max(width, height) > maxDim) {
+    const s = maxDim / Math.max(width, height);
+    width = Math.round(width * s);
+    height = Math.round(height * s);
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return dataUrl;
+  ctx.drawImage(img, 0, 0, width, height);
+  return canvas.toDataURL("image/jpeg", quality);
+}
+
 interface EventData {
   id: string;
   name: string;
@@ -110,6 +140,9 @@ export default function HostPanel() {
   const [pollTimer, setPollTimer] = useState(30);
   const [pollCorrectIdx, setPollCorrectIdx] = useState(0);
   const [pollImageUrl, setPollImageUrl] = useState("");
+  const [imageUrlInput, setImageUrlInput] = useState("");
+  const [imageError, setImageError] = useState("");
+  const imageFileRef = useRef<HTMLInputElement>(null);
 
   const roomQuery = activeRoomId ? `?roomId=${activeRoomId}` : "";
 
@@ -188,8 +221,23 @@ export default function HostPanel() {
     setPollCorrectIdx(0);
     setPollTimer(30);
     setPollImageUrl("");
+    setImageUrlInput("");
+    setImageError("");
     setEditingPollId(null);
     setShowPollForm(false);
+  }
+
+  async function handleImageFile(file: File | null | undefined) {
+    setImageError("");
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setImageError("That file isn't an image."); return; }
+    if (file.size > 15 * 1024 * 1024) { setImageError("Image is too large (max 15 MB)."); return; }
+    try {
+      setPollImageUrl(await fileToDownscaledDataUrl(file));
+      setImageUrlInput("");
+    } catch {
+      setImageError("Couldn't read that image.");
+    }
   }
 
   function startEdit(poll: PollData) {
@@ -200,6 +248,8 @@ export default function HostPanel() {
     setPollCorrectIdx(Math.max(0, poll.options.findIndex((o) => o.id === poll.correctAnswer)));
     setPollTimer(poll.timerSeconds || 30);
     setPollImageUrl(poll.imageUrl || "");
+    setImageUrlInput("");
+    setImageError("");
     setShowPollForm(true);
   }
 
@@ -628,8 +678,38 @@ export default function HostPanel() {
                           )}
                         </div>
                         <div>
-                          <label style={labelStyle}>Image URL (optional)</label>
-                          <input value={pollImageUrl} onChange={(e) => setPollImageUrl(e.target.value)} placeholder="https://..." style={inputStyle} />
+                          <label style={labelStyle}>Image (optional)</label>
+                          {pollImageUrl ? (
+                            <div className="relative" style={{ marginTop: 4 }}>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={pollImageUrl} alt="" style={{ maxHeight: 150, maxWidth: "100%", borderRadius: "var(--radius-sm)", display: "block", border: "1px solid var(--line)" }} />
+                              <button type="button" onClick={() => { setPollImageUrl(""); setImageUrlInput(""); setImageError(""); }} style={{ position: "absolute", top: 8, left: 8, fontFamily: "var(--mono)", fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999, border: "none", background: "rgba(0,0,0,.6)", color: "#fff", cursor: "pointer" }}>✕ Remove</button>
+                            </div>
+                          ) : (
+                            <>
+                              <div
+                                onClick={() => imageFileRef.current?.click()}
+                                onDragOver={(e) => e.preventDefault()}
+                                onDrop={(e) => { e.preventDefault(); handleImageFile(e.dataTransfer.files?.[0]); }}
+                                className="cursor-pointer"
+                                style={{ marginTop: 4, padding: "20px 16px", textAlign: "center", border: "1.5px dashed var(--line)", borderRadius: "var(--radius-sm)", background: "var(--bg)" }}
+                              >
+                                <p style={{ fontFamily: "var(--body)", fontSize: 13, color: "var(--muted)", margin: 0 }}>
+                                  Drag an image here, or <span style={{ color: "var(--accent)", fontWeight: 700 }}>browse</span>
+                                </p>
+                              </div>
+                              <input ref={imageFileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handleImageFile(e.target.files?.[0])} />
+                              <input
+                                value={imageUrlInput}
+                                onChange={(e) => setImageUrlInput(e.target.value)}
+                                onBlur={() => { if (imageUrlInput.trim()) setPollImageUrl(imageUrlInput.trim()); }}
+                                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (imageUrlInput.trim()) setPollImageUrl(imageUrlInput.trim()); } }}
+                                placeholder="…or paste an image URL"
+                                style={{ ...inputStyle, marginTop: 8 }}
+                              />
+                            </>
+                          )}
+                          {imageError && <p style={{ fontFamily: "var(--body)", fontSize: 12, color: "var(--accent2)", marginTop: 6 }}>{imageError}</p>}
                         </div>
                         {pollType !== "word_cloud" && (
                           <div>
