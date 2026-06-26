@@ -67,8 +67,13 @@ app.prepare().then(() => {
       io.to(`event:${data.eventId}`).emit("poll:closed", { pollId: data.pollId, roomId: data.roomId });
     });
 
-    socket.on("poll:leaderboard", (data: { eventId: string; roomId?: string; pollId?: string; leaderboard: { name: string; score: number }[]; title?: string }) => {
-      io.to(`event:${data.eventId}`).emit("poll:leaderboard", { leaderboard: data.leaderboard, roomId: data.roomId, pollId: data.pollId, title: data.title });
+    // The results beat: a closed poll's final bars (+ this-question scores).
+    socket.on("poll:results", (data: { eventId: string; roomId?: string; poll: unknown; scores?: { name: string; score: number }[] }) => {
+      io.to(`event:${data.eventId}`).emit("poll:results", { poll: data.poll, scores: data.scores, roomId: data.roomId });
+    });
+
+    socket.on("poll:leaderboard", (data: { eventId: string; roomId?: string; pollId?: string; leaderboard: { name: string; score: number }[]; title?: string; hide?: boolean }) => {
+      io.to(`event:${data.eventId}`).emit("poll:leaderboard", { leaderboard: data.leaderboard, roomId: data.roomId, pollId: data.pollId, title: data.title, hide: data.hide });
     });
 
     socket.on("event:status", (data: { eventId: string; status: string }) => {

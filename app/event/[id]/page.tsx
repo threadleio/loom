@@ -183,6 +183,13 @@ export default function EventPage() {
       if (timerRef.current) clearInterval(timerRef.current);
       fetchActivePoll();
     });
+    // The host moved the poll to its results beat — it's now closed, so lock
+    // input. fetchActivePoll returns no active poll and the question clears.
+    socket.on("poll:results", (data: { roomId?: string }) => {
+      if (data?.roomId && data.roomId !== activeRoomIdRef.current) return;
+      if (timerRef.current) clearInterval(timerRef.current);
+      fetchActivePoll();
+    });
     socket.on("poll:response", (data: { pollId?: string; roomId?: string }) => {
       if (data?.roomId && data.roomId !== activeRoomIdRef.current) return;
       fetchActivePoll();
@@ -200,6 +207,7 @@ export default function EventPage() {
       socket.off("question:answered");
       socket.off("poll:activated");
       socket.off("poll:closed");
+      socket.off("poll:results");
       socket.off("poll:response");
       socket.off("event:status");
       if (timerRef.current) clearInterval(timerRef.current);
