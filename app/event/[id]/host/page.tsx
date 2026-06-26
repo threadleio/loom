@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { getSocket } from "@/lib/socket";
 import { AppHeader } from "@/components/app-header";
+import { EventQR } from "@/components/event-qr";
 import { RoomSwitcher } from "@/components/room-switcher";
 
 // Read an image file and shrink it client-side to a compact JPEG data URL,
@@ -548,6 +549,9 @@ export default function HostPanel() {
                 </button>
               </div>
               <p className="mt-2 break-all" style={{ fontFamily: "var(--mono)", fontSize: "10.5px", color: "var(--muted)" }}>{shareUrl}</p>
+              <div className="mt-5">
+                <EventQR url={shareUrl} size={120} download code={event.accessCode} />
+              </div>
             </div>
 
             <div style={{ padding: 22, background: "var(--card)", border: "var(--card-border)", borderRadius: "var(--radius)", boxShadow: "var(--card-shadow)" }}>

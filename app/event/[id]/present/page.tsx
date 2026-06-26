@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { EventQR } from "@/components/event-qr";
 import { getSocket } from "@/lib/socket";
 
 interface Question {
@@ -317,9 +318,14 @@ export default function PresentViewPage() {
           )}
           <div style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--muted)", letterSpacing: ".06em", textTransform: "uppercase" }}>{event.name}</div>
         </div>
-        <div className="flex items-baseline gap-2">
-          <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--muted)", letterSpacing: ".06em" }}>JOIN CODE</span>
-          <span style={{ fontFamily: "var(--mono)", fontSize: 20, fontWeight: 700, color: "var(--accent2)", letterSpacing: ".16em" }}>{event.accessCode}</span>
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col items-end" style={{ gap: 1 }}>
+            <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--muted)", letterSpacing: ".06em" }}>SCAN OR ENTER CODE</span>
+            <span style={{ fontFamily: "var(--mono)", fontSize: 20, fontWeight: 700, color: "var(--accent2)", letterSpacing: ".16em" }}>{event.accessCode}</span>
+          </div>
+          {typeof window !== "undefined" && (
+            <EventQR url={`${window.location.origin}/join/${event.accessCode}`} size={68} />
+          )}
         </div>
       </header>
 
