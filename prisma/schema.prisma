@@ -30,6 +30,7 @@ model Event {
   accessCode        String   @unique
   passcode          String?
   moderationEnabled Boolean  @default(false)
+  allowAnonymous    Boolean  @default(true)
   status            String   @default("draft") // "draft" | "live" | "ended" | "archived"
   endedAt           DateTime?
   createdBy         String

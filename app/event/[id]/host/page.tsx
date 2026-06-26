@@ -44,6 +44,7 @@ interface EventData {
   accessCode: string;
   passcode?: string | null;
   moderationEnabled: boolean;
+  allowAnonymous: boolean;
   createdAt: string;
   status: string;
   endedAt?: string | null;
@@ -557,6 +558,14 @@ export default function HostPanel() {
                   <dd style={{ margin: 0 }}>
                     <button onClick={() => patchEvent({ moderationEnabled: !event.moderationEnabled })} className="cursor-pointer transition-colors" style={{ fontFamily: "var(--mono)", fontSize: 11, fontWeight: 700, letterSpacing: ".04em", padding: "5px 14px", borderRadius: 999, border: "var(--card-border)", background: event.moderationEnabled ? "var(--accent3)" : "var(--bg2)", color: event.moderationEnabled ? "var(--on-accent)" : "var(--muted)" }}>
                       {event.moderationEnabled ? "ON" : "OFF"}
+                    </button>
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between">
+                  <dt style={{ fontFamily: "var(--mono)", fontSize: "10.5px", color: "var(--muted)", letterSpacing: ".04em" }}>Anonymous questions {event.allowAnonymous ? "" : "· names required"}</dt>
+                  <dd style={{ margin: 0 }}>
+                    <button onClick={() => patchEvent({ allowAnonymous: !event.allowAnonymous })} className="cursor-pointer transition-colors" style={{ fontFamily: "var(--mono)", fontSize: 11, fontWeight: 700, letterSpacing: ".04em", padding: "5px 14px", borderRadius: 999, border: "var(--card-border)", background: event.allowAnonymous ? "var(--accent3)" : "var(--bg2)", color: event.allowAnonymous ? "var(--on-accent)" : "var(--muted)" }}>
+                      {event.allowAnonymous ? "ON" : "OFF"}
                     </button>
                   </dd>
                 </div>

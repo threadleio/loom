@@ -47,7 +47,7 @@ export async function PATCH(
   }
 
   const body = await request.json();
-  const { status, name, passcode, moderationEnabled } = body;
+  const { status, name, passcode, moderationEnabled, allowAnonymous } = body;
   const data: Record<string, unknown> = {};
 
   // Status changes still go through the lifecycle state machine.
@@ -73,6 +73,9 @@ export async function PATCH(
   }
   if (moderationEnabled !== undefined) {
     data.moderationEnabled = !!moderationEnabled;
+  }
+  if (allowAnonymous !== undefined) {
+    data.allowAnonymous = !!allowAnonymous;
   }
 
   if (Object.keys(data).length === 0) {

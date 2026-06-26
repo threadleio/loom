@@ -25,6 +25,7 @@ interface EventData {
   name: string;
   accessCode: string;
   moderationEnabled: boolean;
+  allowAnonymous: boolean;
   status: string;
   rooms: { id: string; name: string }[];
 }
@@ -406,10 +407,14 @@ export default function EventPage() {
         <form onSubmit={handleSubmitQuestion} className="mb-6" style={{ padding: 18, background: "var(--card)", border: "var(--card-border)", borderRadius: "var(--radius)", boxShadow: "var(--card-shadow)" }}>
           <textarea value={newQuestion} onChange={(e) => setNewQuestion(e.target.value)} placeholder="Ask a question..." maxLength={300} rows={3} className="w-full resize-none" style={{ fontFamily: "var(--body)", fontSize: 15, padding: 12, border: "1.5px solid var(--line)", borderRadius: "var(--radius-sm)", background: "var(--bg)", color: "var(--ink)", outline: "none" }} />
           <div className="mt-3 flex items-center justify-between">
-            <label className="flex items-center gap-2" style={{ fontFamily: "var(--body)", fontSize: 13, color: "var(--muted)" }}>
-              <input type="checkbox" checked={isAnonymous} onChange={(e) => setIsAnonymous(e.target.checked)} style={{ accentColor: "var(--accent)", width: 16, height: 16 }} />
-              Ask anonymously
-            </label>
+            {event.allowAnonymous ? (
+              <label className="flex items-center gap-2" style={{ fontFamily: "var(--body)", fontSize: 13, color: "var(--muted)" }}>
+                <input type="checkbox" checked={isAnonymous} onChange={(e) => setIsAnonymous(e.target.checked)} style={{ accentColor: "var(--accent)", width: 16, height: 16 }} />
+                Ask anonymously
+              </label>
+            ) : (
+              <span style={{ fontFamily: "var(--body)", fontSize: 13, color: "var(--muted)" }}>Posted with your name</span>
+            )}
             <div className="flex items-center gap-3">
               {justSubmitted && (
                 <span className="flex items-center gap-1" style={{ fontFamily: "var(--mono)", fontSize: "11px", fontWeight: 700, color: "var(--accent2)", animation: "loomPop .3s ease-out" }}>

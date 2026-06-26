@@ -117,7 +117,9 @@ export async function POST(
   const question = await prisma.question.create({
     data: {
       content,
-      isAnonymous: isAnonymous || false,
+      // Enforce the event's policy: if anonymity is disallowed, attribute
+      // the question regardless of what the client asked for.
+      isAnonymous: event.allowAnonymous ? isAnonymous || false : false,
       status: event.moderationEnabled ? "pending" : "approved",
       roomId: mainRoom.id,
       authorId: session.user.id,
