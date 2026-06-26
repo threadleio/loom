@@ -84,9 +84,11 @@ export async function PUT(
     return NextResponse.json({ error: "Only draft polls can be edited" }, { status: 400 });
 
   const body = await request.json();
-  const { title, type, options, imageUrl, timerSeconds, correctOptionIndex } = body;
+  const { title, type, options, imageUrl, timerSeconds, correctOptionIndex, points, scoreMode } = body;
   if (!title || !type)
     return NextResponse.json({ error: "Title and type required" }, { status: 400 });
+
+  const safePoints = Math.min(100000, Math.max(1, Math.round(Number(points)) || 1000));
 
   // Drafts have no responses, so the options can be replaced wholesale.
   const [, updated] = await prisma.$transaction([
@@ -98,6 +100,8 @@ export async function PUT(
         type,
         imageUrl: imageUrl || null,
         timerSeconds: timerSeconds || 30,
+        points: safePoints,
+        scoreMode: scoreMode === "flat" ? "flat" : "speed",
         correctAnswer: null,
         options: {
           create: (options || []).map((text: string, i: number) => ({ text, order: i })),

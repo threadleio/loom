@@ -3,6 +3,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
+// Keep configurable quiz points sane: a positive integer, generously capped.
+function clampPoints(value: unknown): number {
+  const n = Math.round(Number(value));
+  if (!Number.isFinite(n)) return 1000;
+  return Math.min(100000, Math.max(1, n));
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -39,6 +46,8 @@ export async function GET(
       status: p.status,
       imageUrl: p.imageUrl,
       timerSeconds: p.timerSeconds,
+      points: p.points,
+      scoreMode: p.scoreMode,
       correctAnswer: p.correctAnswer,
       options: p.options.map((o) => ({ id: o.id, text: o.text, order: o.order })),
       totalResponses: p._count.responses,
@@ -63,7 +72,7 @@ export async function POST(
   if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 });
 
   const body = await request.json();
-  const { title, type, options, imageUrl, timerSeconds, correctAnswer, roomId } = body;
+  const { title, type, options, imageUrl, timerSeconds, correctAnswer, roomId, points, scoreMode } = body;
   const mainRoom = roomId
     ? event.rooms.find((r: { id: string }) => r.id === roomId)
     : event.rooms[0];
@@ -81,6 +90,8 @@ export async function POST(
       type,
       imageUrl: imageUrl || null,
       timerSeconds: timerSeconds || 30,
+      points: clampPoints(points),
+      scoreMode: scoreMode === "flat" ? "flat" : "speed",
       correctAnswer: correctAnswer || null,
       order: pollOrder,
       options: {

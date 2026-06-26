@@ -71,6 +71,8 @@ interface PollData {
   options: { id: string; text: string; order: number }[];
   totalResponses: number;
   timerSeconds: number;
+  points: number;
+  scoreMode: string;
   correctAnswer: string | null;
   imageUrl?: string | null;
 }
@@ -143,6 +145,8 @@ export default function HostPanel() {
   const [pollOptions, setPollOptions] = useState(["", ""]);
   const optionRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [pollTimer, setPollTimer] = useState(30);
+  const [pollPoints, setPollPoints] = useState(1000);
+  const [pollScoreMode, setPollScoreMode] = useState("speed");
   const [pollCorrectIdx, setPollCorrectIdx] = useState(0);
   const [pollImageUrl, setPollImageUrl] = useState("");
   const [imageUrlInput, setImageUrlInput] = useState("");
@@ -240,6 +244,8 @@ export default function HostPanel() {
     setPollOptions(["", ""]);
     setPollCorrectIdx(0);
     setPollTimer(30);
+    setPollPoints(1000);
+    setPollScoreMode("speed");
     setPollImageUrl("");
     setImageUrlInput("");
     setImageError("");
@@ -267,6 +273,8 @@ export default function HostPanel() {
     setPollOptions(poll.type === "word_cloud" ? ["", ""] : poll.options.map((o) => o.text));
     setPollCorrectIdx(Math.max(0, poll.options.findIndex((o) => o.id === poll.correctAnswer)));
     setPollTimer(poll.timerSeconds || 30);
+    setPollPoints(poll.points || 1000);
+    setPollScoreMode(poll.scoreMode || "speed");
     setPollImageUrl(poll.imageUrl || "");
     setImageUrlInput("");
     setImageError("");
@@ -289,6 +297,8 @@ export default function HostPanel() {
           options: opts,
           imageUrl: pollImageUrl || undefined,
           timerSeconds: pollType === "quiz" ? pollTimer : undefined,
+          points: pollType === "quiz" ? pollPoints : undefined,
+          scoreMode: pollType === "quiz" ? pollScoreMode : undefined,
           correctOptionIndex: pollType === "quiz" ? pollCorrectIdx : undefined,
         }),
       });
@@ -308,6 +318,8 @@ export default function HostPanel() {
         options: opts,
         imageUrl: pollImageUrl || undefined,
         timerSeconds: pollType === "quiz" ? pollTimer : undefined,
+        points: pollType === "quiz" ? pollPoints : undefined,
+        scoreMode: pollType === "quiz" ? pollScoreMode : undefined,
         correctAnswer: pollType === "quiz" ? undefined : undefined,
         roomId: activeRoomId || undefined,
       }),
@@ -727,6 +739,26 @@ export default function HostPanel() {
                             </div>
                           )}
                         </div>
+                        {pollType === "quiz" && (
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label style={labelStyle}>Scoring</label>
+                              <select value={pollScoreMode} onChange={(e) => setPollScoreMode(e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
+                                <option value="speed">Speed bonus (faster = more)</option>
+                                <option value="flat">Flat (fixed per question)</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label style={labelStyle}>{pollScoreMode === "flat" ? "Points (correct)" : "Max points"}</label>
+                              <input type="number" value={pollPoints} onChange={(e) => setPollPoints(+e.target.value)} min={1} max={100000} style={inputStyle} />
+                              <p style={{ fontFamily: "var(--body)", fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
+                                {pollScoreMode === "flat"
+                                  ? `Correct = ${pollPoints || 0} pts, regardless of speed.`
+                                  : `Correct = ${Math.round((pollPoints || 0) * 0.5)}–${pollPoints || 0} pts, scaled by speed.`}
+                              </p>
+                            </div>
+                          </div>
+                        )}
                         <div>
                           <label style={labelStyle}>Image (optional)</label>
                           {pollImageUrl ? (

@@ -61,6 +61,8 @@ model Poll {
   status      String   @default("draft") // "draft" | "active" | "closed"
   correctAnswer String?
   timerSeconds Int      @default(30)
+  points       Int      @default(1000)  // quiz: max (speed) or flat award for a correct answer
+  scoreMode    String   @default("speed") // "speed" (time-weighted) | "flat"
   activatedAt DateTime?
   order       Int      @default(0)
   createdAt   DateTime @default(now())

@@ -32,10 +32,17 @@ export async function POST(
   if (poll.type === "quiz" && optionId) {
     const option = await prisma.pollOption.findUnique({ where: { id: optionId } });
     if (option && poll.correctAnswer === option.id) {
-      const totalMs = poll.timerSeconds * 1000;
-      const elapsed = poll.activatedAt ? Date.now() - new Date(poll.activatedAt).getTime() : 0;
-      const remaining = Math.max(0, Math.min(totalMs, totalMs - elapsed));
-      score = Math.round(500 + (remaining / totalMs) * 500);
+      const max = poll.points;
+      if (poll.scoreMode === "flat") {
+        // Flat: a correct answer is worth exactly the configured points.
+        score = max;
+      } else {
+        // Speed-weighted: 50–100% of the points, scaled by time remaining.
+        const totalMs = poll.timerSeconds * 1000;
+        const elapsed = poll.activatedAt ? Date.now() - new Date(poll.activatedAt).getTime() : 0;
+        const remaining = Math.max(0, Math.min(totalMs, totalMs - elapsed));
+        score = Math.round(max * (0.5 + 0.5 * (remaining / totalMs)));
+      }
     }
   }
 
