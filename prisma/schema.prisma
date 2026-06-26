@@ -102,6 +102,8 @@ model Question {
   content     String
   isAnonymous Boolean  @default(false)
   status      String   @default("approved") // "pending" | "approved" | "highlighted" | "archived" | "rejected"
+  answer      String?
+  answeredAt  DateTime?
   createdAt   DateTime @default(now())
 
   room   Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)

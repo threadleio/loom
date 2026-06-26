@@ -67,6 +67,7 @@ export async function GET(
     voteCount: q._count.votes,
     hasVoted: userVotes.includes(q.id),
     status: q.status,
+    answer: q.answer,
     isOwn: q.authorId === userId,
     createdAt: q.createdAt,
   }));

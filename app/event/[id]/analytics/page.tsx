@@ -19,6 +19,7 @@ interface Analytics {
     author: string;
     votes: number;
     status: string;
+    answer?: string | null;
     isAnonymous: boolean;
     createdAt: string;
   }[];
@@ -67,17 +68,17 @@ export default function AnalyticsPage() {
   function downloadCsv() {
     if (!data) return;
 
-    let csv = "Type,Content,Author,Votes/Responses,Status,Created At\n";
+    let csv = "Type,Content,Author,Votes/Responses,Status,Created At,Answer\n";
     data.leaderboard.forEach((l, i) => {
-      csv += `Leaderboard,"${l.name.replace(/"/g, '""')}",,${l.score},#${i + 1},\n`;
+      csv += `Leaderboard,"${l.name.replace(/"/g, '""')}",,${l.score},#${i + 1},,\n`;
     });
     for (const q of data.questions) {
-      csv += `Question,"${q.content.replace(/"/g, '""')}","${q.author}",${q.votes},${q.status},${q.createdAt}\n`;
+      csv += `Question,"${q.content.replace(/"/g, '""')}","${q.author}",${q.votes},${q.status},${q.createdAt},"${(q.answer || "").replace(/"/g, '""')}"\n`;
     }
     for (const p of data.polls) {
-      csv += `Poll,"${p.title.replace(/"/g, '""')}",,${p.totalResponses},${p.status},\n`;
+      csv += `Poll,"${p.title.replace(/"/g, '""')}",,${p.totalResponses},${p.status},,\n`;
       for (const o of p.options) {
-        csv += `Poll Option,"${o.text.replace(/"/g, '""')}",,${o.responses},,\n`;
+        csv += `Poll Option,"${o.text.replace(/"/g, '""')}",,${o.responses},,,\n`;
       }
     }
 

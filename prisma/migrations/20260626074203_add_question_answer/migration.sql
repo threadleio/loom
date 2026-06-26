@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Question" ADD COLUMN "answer" TEXT;
+ALTER TABLE "Question" ADD COLUMN "answeredAt" DATETIME;

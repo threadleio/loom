@@ -15,6 +15,7 @@ interface Question {
   voteCount: number;
   hasVoted: boolean;
   status: string;
+  answer?: string | null;
   isOwn?: boolean;
   createdAt: string;
 }
@@ -168,6 +169,10 @@ export default function EventPage() {
       if (data.roomId && data.roomId !== activeRoomIdRef.current) return;
       setQuestions((prev) => prev.map((q) => q.id === data.questionId ? { ...q, status: data.status } : q));
     });
+    socket.on("question:answered", (data: { questionId: string; answer: string | null; roomId?: string }) => {
+      if (data.roomId && data.roomId !== activeRoomIdRef.current) return;
+      setQuestions((prev) => prev.map((q) => q.id === data.questionId ? { ...q, answer: data.answer } : q));
+    });
     socket.on("poll:activated", (data: { pollId?: string; roomId?: string }) => {
       if (data?.roomId && data.roomId !== activeRoomIdRef.current) return;
       fetchActivePoll();
@@ -191,6 +196,7 @@ export default function EventPage() {
       socket.off("question:new");
       socket.off("question:vote");
       socket.off("question:status");
+      socket.off("question:answered");
       socket.off("poll:activated");
       socket.off("poll:closed");
       socket.off("poll:response");
@@ -468,6 +474,12 @@ export default function EventPage() {
                     )}
                     <p style={{ fontFamily: "var(--body)", fontWeight: 500, fontSize: 16, lineHeight: 1.4, color: "var(--ink)", margin: 0 }}>{q.content}</p>
                     <p style={{ fontFamily: "var(--mono)", fontSize: "11px", color: "var(--muted)", margin: 0, marginTop: 6 }}>— {q.authorName} &middot; {new Date(q.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+                    {q.answer && (
+                      <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: "var(--radius-sm)", background: "var(--bg2)", borderLeft: "3px solid var(--accent3)" }}>
+                        <p style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", color: "var(--accent3)", margin: 0, marginBottom: 5 }}>✓ HOST ANSWERED</p>
+                        <p style={{ fontFamily: "var(--body)", fontSize: 14, lineHeight: 1.4, color: "var(--ink)", margin: 0 }}>{q.answer}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               );

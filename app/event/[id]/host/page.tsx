@@ -57,6 +57,7 @@ interface Question {
   isAnonymous: boolean;
   voteCount: number;
   status: string;
+  answer?: string | null;
   createdAt: string;
 }
 
@@ -133,6 +134,8 @@ export default function HostPanel() {
   // Poll creation form
   const [showPollForm, setShowPollForm] = useState(false);
   const [editingPollId, setEditingPollId] = useState<string | null>(null);
+  const [answeringId, setAnsweringId] = useState<string | null>(null);
+  const [answerDraft, setAnswerDraft] = useState("");
   const [pollTitle, setPollTitle] = useState("");
   const [pollType, setPollType] = useState("multiple_choice");
   const [pollOptions, setPollOptions] = useState(["", ""]);
@@ -211,6 +214,21 @@ export default function HostPanel() {
       socket.emit("question:status", { eventId: id, roomId: activeRoomId, questionId, status });
       fetchQuestions();
       fetchPending();
+    }
+  }
+
+  async function saveAnswer(questionId: string, text: string) {
+    const answer = text.trim();
+    const res = await fetch(`/api/events/${id}/questions/${questionId}/answer`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ answer }),
+    });
+    if (res.ok) {
+      getSocket().emit("question:answered", { eventId: id, roomId: activeRoomId, questionId, answer: answer || null });
+      setAnsweringId(null);
+      setAnswerDraft("");
+      fetchQuestions();
     }
   }
 
@@ -597,10 +615,29 @@ export default function HostPanel() {
                       <div className="flex-1 min-w-0">
                         <p style={{ fontFamily: "var(--body)", fontWeight: 500, fontSize: 15, color: "var(--ink)", margin: 0 }}>{q.content}</p>
                         <p style={{ fontFamily: "var(--mono)", fontSize: "10.5px", color: "var(--muted)", margin: 0, marginTop: 4 }}>— {q.authorName} &middot; {new Date(q.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+                        {answeringId === q.id ? (
+                          <div style={{ marginTop: 10 }}>
+                            <textarea value={answerDraft} onChange={(e) => setAnswerDraft(e.target.value)} rows={2} placeholder="Type your answer…" autoFocus style={{ width: "100%", fontFamily: "var(--body)", fontSize: 14, padding: "8px 10px", border: "var(--card-border)", borderRadius: "var(--radius-sm)", background: "var(--bg)", color: "var(--ink)", outline: "none", resize: "vertical" }} />
+                            <div className="flex gap-2" style={{ marginTop: 6 }}>
+                              <button onClick={() => saveAnswer(q.id, answerDraft)} style={btnStyle("var(--accent3)", "var(--on-accent)")}>Save answer</button>
+                              <button onClick={() => { setAnsweringId(null); setAnswerDraft(""); }} style={{ ...btnStyle("var(--bg2)", "var(--muted)"), border: "var(--card-border)" }}>Cancel</button>
+                              {q.answer && <button onClick={() => saveAnswer(q.id, "")} style={{ ...btnStyle("var(--bg2)", "var(--accent2)"), border: "var(--card-border)" }}>Clear</button>}
+                            </div>
+                          </div>
+                        ) : q.answer ? (
+                          <div style={{ marginTop: 8, padding: "8px 11px", borderRadius: "var(--radius-sm)", background: "var(--bg2)", borderLeft: "3px solid var(--accent3)" }}>
+                            <div className="flex items-center justify-between gap-2">
+                              <span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 700, letterSpacing: ".05em", color: "var(--accent3)" }}>✓ ANSWERED</span>
+                              <button onClick={() => { setAnsweringId(q.id); setAnswerDraft(q.answer || ""); }} style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--muted)", background: "none", border: "none", cursor: "pointer" }}>Edit</button>
+                            </div>
+                            <p style={{ fontFamily: "var(--body)", fontSize: 13, color: "var(--ink)", margin: "4px 0 0" }}>{q.answer}</p>
+                          </div>
+                        ) : null}
                       </div>
                       <div className="flex gap-1 flex-none">
                         {q.status !== "highlighted" && <button onClick={() => moderateQuestion(q.id, "highlighted")} style={btnStyle("var(--accent)", "var(--on-accent)")}>Highlight</button>}
                         {q.status === "highlighted" && <button onClick={() => moderateQuestion(q.id, "approved")} style={{ ...btnStyle("var(--bg2)", "var(--ink)"), border: "var(--card-border)" }}>Unhighlight</button>}
+                        {!q.answer && answeringId !== q.id && <button onClick={() => { setAnsweringId(q.id); setAnswerDraft(""); }} style={btnStyle("var(--accent3)", "var(--on-accent)")}>Answer</button>}
                         <button onClick={() => moderateQuestion(q.id, "archived")} style={btnStyle("var(--accent2)", "var(--on-accent)")}>Archive</button>
                       </div>
                     </div>

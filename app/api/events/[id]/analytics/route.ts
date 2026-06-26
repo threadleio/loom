@@ -87,6 +87,7 @@ export async function GET(
       author: q.isAnonymous ? "Anonymous" : q.author.displayName,
       votes: q._count.votes,
       status: q.status,
+      answer: q.answer,
       isAnonymous: q.isAnonymous,
       createdAt: q.createdAt,
     })),

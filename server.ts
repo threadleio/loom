@@ -47,6 +47,14 @@ app.prepare().then(() => {
       });
     });
 
+    socket.on("question:answered", (data: { eventId: string; roomId?: string; questionId: string; answer: string | null }) => {
+      io.to(`event:${data.eventId}`).emit("question:answered", {
+        questionId: data.questionId,
+        answer: data.answer,
+        roomId: data.roomId,
+      });
+    });
+
     socket.on("poll:activated", (data: { eventId: string; roomId?: string; pollId: string }) => {
       io.to(`event:${data.eventId}`).emit("poll:activated", { pollId: data.pollId, roomId: data.roomId });
     });
